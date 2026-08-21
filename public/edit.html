@@ -93,11 +93,26 @@
     border-top:1px solid var(--line);padding:.7rem 1rem calc(.7rem + env(safe-area-inset-bottom));
     display:flex;gap:.6rem;align-items:center;backdrop-filter:blur(6px)}
   .save{flex:1;background:var(--go);color:#fff;border:0;border-radius:14px;
-    padding:.95rem;font-size:1.05rem;font-weight:700}
-  .save[disabled]{opacity:.55}
-  .status{font-size:.9rem;color:var(--muted);min-width:0;flex:1;text-align:right}
-  .status.bad{color:#b3402c}
-  .status.good{color:var(--go)}
+    padding:.95rem;font-size:1.05rem;font-weight:700;transition:background .15s}
+  .save[disabled]{opacity:.7}
+  .save.done{background:#1f5c3d}
+
+  /* The confirmation has to be impossible to miss. Susan is tired and needs
+     to know it worked without hunting for a small grey line. It covers the
+     save button, so the acknowledgement lands where she is already looking. */
+  #toast{position:fixed;left:.75rem;right:.75rem;
+    bottom:calc(.7rem + env(safe-area-inset-bottom));z-index:40;
+    background:var(--go);color:#fff;border-radius:16px;padding:1.05rem 1.1rem;
+    font-size:1.05rem;font-weight:600;display:flex;align-items:center;gap:.7rem;
+    box-shadow:0 10px 30px rgba(40,30,20,.28);
+    transform:translateY(140%);transition:transform .22s ease;pointer-events:none}
+  #toast.on{transform:translateY(0);pointer-events:auto}
+  #toast.bad{background:#a83a26}
+  #toast .mark{font-size:1.4rem;line-height:1;flex:none}
+  #toast .msg{flex:1}
+  #toast .dismiss{background:rgba(255,255,255,.2);border:0;color:#fff;
+    border-radius:10px;padding:.4rem .7rem;font-weight:600;flex:none}
+  @media (prefers-reduced-motion:reduce){ #toast{transition:none} }
 
   .gear{background:transparent;border:0;color:var(--muted);text-decoration:underline;
     padding:.4rem 0;font-size:.95rem}
@@ -137,7 +152,12 @@
 
 <div class="savebar">
   <button class="save" id="savebtn" onclick="saveAll()">Save &amp; send to tablet</button>
-  <span class="status" id="status"></span>
+</div>
+
+<div id="toast" role="status" aria-live="assertive">
+  <span class="mark" id="toast-mark">✓</span>
+  <span class="msg" id="toast-msg"></span>
+  <button class="dismiss" id="toast-dismiss" onclick="hideToast()">OK</button>
 </div>
 
 <div id="scrim" onclick="closeSheet()"></div>
@@ -205,14 +225,11 @@ async function unlock(){
   if (!val) { err.textContent = 'Enter your PIN.'; return; }
   err.textContent = 'Checking…';
   pin = val;
-  // A harmless probe write proves the PIN before Susan builds a whole plan
-  // and only then discovers it was wrong.
-  const d = todayLocal();
-  const cur = await fetch(`/api/day?date=${d}`).then(r=>r.json());
+  // Checks the PIN without writing anything at all.
   const res = await fetch('/api/save',{
     method:'POST',
     headers:{'content-type':'application/json','x-pin':pin},
-    body:JSON.stringify({date:d, plan:cur.plan, library:cur.library, contacts:cur.contacts}),
+    body:JSON.stringify({verify:true}),
   });
   if (res.status === 401){ err.textContent = 'That PIN is not right.'; pin=''; return; }
   if (!res.ok){ err.textContent = 'Could not reach the server. Try again.'; pin=''; return; }
@@ -361,27 +378,53 @@ function openContacts(){
 window.openContacts = openContacts;
 
 /* -------------------------------------------------------------- save */
-function status(msg,kind=''){
-  const el = document.getElementById('status');
-  el.textContent = msg; el.className = `status ${kind}`;
+let toastTimer = null;
+
+function showToast(msg, ok = true, autoHide = true){
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-mark').textContent = ok ? '✓' : '!';
+  document.getElementById('toast-dismiss').hidden = autoHide;
+  t.classList.toggle('bad', !ok);
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  // Success fades by itself; a failure stays until she acknowledges it.
+  if (autoHide) toastTimer = setTimeout(hideToast, 3200);
 }
+function hideToast(){
+  clearTimeout(toastTimer);
+  document.getElementById('toast').classList.remove('on');
+}
+window.hideToast = hideToast;
+
+// Kept for the small in-page messages (copy-yesterday, contacts).
+function status(msg, kind = ''){ showToast(msg, kind !== 'bad'); }
 
 async function saveAll(){
   const btn = document.getElementById('savebtn');
-  btn.disabled = true; status('Saving…');
+  const label = 'Save & send to tablet';
+  btn.disabled = true; btn.textContent = 'Saving…';
   try{
     const res = await fetch('/api/save',{
       method:'POST',
       headers:{'content-type':'application/json','x-pin':pin},
       body:JSON.stringify({date, plan, library, contacts}),
     });
-    if (res.status === 401){ status('PIN was rejected.','bad'); btn.disabled=false; return; }
+    if (res.status === 401){
+      showToast('That PIN was rejected. Nothing was saved.', false, false);
+      btn.disabled = false; btn.textContent = label; return;
+    }
     if (!res.ok) throw new Error(res.status);
     dirty = false;
-    status("Saved — Melody's tablet will show this.",'good');
+    // Three signals at once: the button changes, a banner covers it, and
+    // screen readers are told. There is no way to miss this and wonder.
+    btn.textContent = '✓ Saved'; btn.classList.add('done');
+    showToast("Saved — Melody's tablet will show this.", true);
+    setTimeout(()=>{ btn.textContent = label; btn.classList.remove('done'); }, 3200);
   }catch(e){
     // Susan's input stays on screen. Never silently lose a plan.
-    status('Could not save. Your plan is still here — try again.','bad');
+    showToast('Could not save. Your plan is still here — try again.', false, false);
+    btn.textContent = label;
   }
   btn.disabled = false;
 }

@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({executablePath:'/opt/pw-browsers/chromium-1194/chrome-linux/chrome'});
+const p = await b.newPage({viewport:{width:390,height:844}, deviceScaleFactor:2});
+await p.goto('http://127.0.0.1:8890/edit.html',{waitUntil:'networkidle'});
+await p.fill('#pin','4821'); await p.click('#gate button');
+await p.waitForSelector('#app section');
+await p.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));
+await p.click('#savebtn'); await p.waitForSelector('#toast.on'); await p.waitForTimeout(400);
+await p.screenshot({path:'shots/edit-05-saved.png'});
+await b.close(); console.log('ok');

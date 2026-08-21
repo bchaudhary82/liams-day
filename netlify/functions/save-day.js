@@ -66,6 +66,14 @@ export default async (req) => {
     return json({ error: 'bad_json' }, 400);
   }
 
+  // A PIN check with no write. The edit page uses this to confirm the PIN
+  // before Susan builds a whole plan — better than letting her type for two
+  // minutes and only then discovering the PIN was wrong. It deliberately
+  // touches nothing: an earlier version proved the PIN by writing the day
+  // back to itself, which stamped an empty plan with a fresh timestamp and
+  // made a perfectly good save look like a failure.
+  if (body?.verify === true) return json({ ok: true, verified: true });
+
   const { date } = body || {};
   if (!isValidDate(date)) return json({ error: 'bad_date' }, 400);
 

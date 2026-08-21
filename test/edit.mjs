@@ -32,6 +32,16 @@ await page.click('#gate button');
 await page.waitForSelector('#app section', { timeout: 5000 });
 check('the right PIN opens the planner', !(await page.isVisible('#gate')));
 
+// Regression: unlocking used to write the day back to itself, stamping an
+// empty plan with a fresh timestamp and making a real save look like it
+// had failed on the board.
+const dToday = await page.evaluate(() => new Intl.DateTimeFormat('en-CA',
+  { timeZone: 'America/Edmonton' }).format(new Date()));
+const afterUnlock = await fetch(`${BASE}/api/day?date=${dToday}`).then((r) => r.json());
+check('entering the PIN does not write anything to the day',
+  afterUnlock.updatedAt === null || afterUnlock.plan.breakfast.length > 0,
+  `updatedAt=${afterUnlock.updatedAt} breakfast=${afterUnlock.plan.breakfast.length}`);
+
 /* ----------------------------------------------------- all seven slots */
 const titles = await page.$$eval('#app h2', (e) => e.map((x) => x.textContent.trim()));
 check('every section Susan asked for is editable',
@@ -93,10 +103,27 @@ check('adding to the morning snack does not touch the afternoon snack',
 
 /* --------------------------------------------------------------- save */
 await page.click('#savebtn');
-await page.waitForFunction(() => document.getElementById('status').textContent.includes('Saved'),
-  null, { timeout: 5000 });
-check('saving reports success in plain language',
-  (await page.textContent('#status')).includes("Melody's tablet"));
+await page.waitForSelector('#toast.on', { timeout: 5000 });
+await page.waitForTimeout(350);   // let the slide-in finish before measuring
+
+// The confirmation has to be impossible to miss. A small grey line beside
+// the button was missed in real use, so this asserts the banner is actually
+// on screen, large, and over the save button — not merely present in the DOM.
+check('saving shows a confirmation banner, not a subtle line',
+  await page.isVisible('#toast.on'));
+check('the confirmation says plainly what happened',
+  (await page.textContent('#toast-msg')).includes("Melody's tablet"));
+const toastBox = await page.locator('#toast').boundingBox();
+const vh = await page.evaluate(() => window.innerHeight);
+check('the banner is big enough to notice', toastBox.height >= 44, `${toastBox?.height}px`);
+check('the banner is actually inside the screen, not below the fold',
+  toastBox.y >= 0 && (toastBox.y + toastBox.height) <= vh + 1,
+  `top ${Math.round(toastBox.y)}, bottom ${Math.round(toastBox.y + toastBox.height)}, viewport ${vh}`);
+check('the button itself also confirms',
+  (await page.textContent('#savebtn')).includes('Saved'));
+await page.waitForTimeout(3600);
+check('the confirmation clears itself so it never blocks the page',
+  !(await page.isVisible('#toast.on')));
 
 /* --------------------------------- the new item survives, and reaches the board */
 const date = await page.evaluate(() => new Intl.DateTimeFormat('en-CA',

@@ -221,6 +221,37 @@ check('addDays crosses the DST boundary correctly',
   `got ${addDays('2026-11-01', 1)} / ${addDays('2026-03-07', 1)}`);
 check('addDays rolls over month ends', addDays('2026-08-31', 1) === '2026-09-01');
 
+
+/* ------------------------------------------- 11. PIN check writes nothing */
+// Regression: an earlier version proved the PIN by writing the day back to
+// itself, stamping an empty plan with a fresh timestamp. That made a real
+// save look like a failure on the board.
+
+const vDate = '2026-09-09';
+await save({ date: vDate, plan: { ...planA, breakfast: ['f-yogurt'] }, library });
+const beforeVerify = await get(`?date=${vDate}`);
+
+const v = await fetch(`${BASE}/api/save`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', 'x-pin': PIN },
+  body: JSON.stringify({ verify: true }),
+}).then(async (r) => ({ status: r.status, body: await r.json() }));
+check('a verify call with the right PIN succeeds', v.status === 200 && v.body.verified === true);
+
+const badV = await fetch(`${BASE}/api/save`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', 'x-pin': '9999' },
+  body: JSON.stringify({ verify: true }),
+});
+check('a verify call with the wrong PIN is refused', badV.status === 401);
+
+const afterVerify = await get(`?date=${vDate}`);
+check('verifying the PIN does not touch the stored plan',
+  eq(afterVerify.body.plan, beforeVerify.body.plan));
+check('verifying the PIN does not bump the timestamp',
+  afterVerify.body.updatedAt === beforeVerify.body.updatedAt,
+  `${beforeVerify.body.updatedAt} -> ${afterVerify.body.updatedAt}`);
+
 /* ------------------------------------------------------------- report */
 
 await cleanup();
