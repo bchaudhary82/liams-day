@@ -18,3 +18,11 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "no-cache"
+
+# The service worker itself must never be cached, or a deploy can't reach
+# devices already running an older copy of it.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"

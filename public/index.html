@@ -277,6 +277,15 @@ async function refresh(){
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refresh();              // and whenever she picks it up
   });
+
+  // Lets the browser keep its own copy of this page, so tapping the icon
+  // with no connection still opens the board instead of an error screen.
+  // Entirely optional — if it fails, the app works exactly as before.
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
 })();
 </script>
 </body>

@@ -79,6 +79,21 @@ Write the PIN down. There is no reset flow — if it's lost, you change the vari
 
 ---
 
+## Part C2 — Make the site public (~1 min) — required, and easy to miss
+
+**Netlify creates new projects as Private.** A private project can only be opened by someone signed into your Netlify account — so Melody would hit a login wall, which breaks the entire premise. This is not the same thing as the GitHub repo's public/private setting; they're unrelated.
+
+**Site configuration → Access & security → Visitor access → Project visibility → Edit visibility**
+
+- **Production visibility → Public** ← this is the one that matters
+- **Deploy Preview visibility → leave Private.** Previews are throwaway builds; there's no reason to expose them.
+
+**How you'd notice if you skipped it:** opening the board on a phone or another device prompts for a Netlify login with your email. On your own laptop it looks fine, because you're already signed in — which is exactly why it's easy to miss.
+
+**Confirm it worked:** open the board in a private/incognito window. No login prompt, board loads. Better still, open it on a device that has never signed into any of your accounts. That's the closest you can get to being Melody.
+
+---
+
 ## Part D — Name it (~1 min)
 
 **Site configuration → General → Change site name → `liams-day`.**
@@ -148,7 +163,8 @@ Once phase 4 passes:
 
 | Symptom | Where to look |
 |---|---|
-| Saving says the PIN was rejected | `EDIT_PIN` not set, or set but not redeployed since (Part C2) |
+| **Asked to log into Netlify when opening the board** | Project visibility is still Private — see Part C2. This is the one that would silently break it for Melody. |
+| Saving says the PIN was rejected | `EDIT_PIN` not set, or set but not redeployed since (Part C) |
 | Board loads but is empty | Normal on a brand-new site — nothing's been planned yet |
 | "Could not save" | Netlify **Logs → Functions** for `save-day` |
 | Board never updates on its own | Check `get-day` in the function logs; the poll runs once a minute |

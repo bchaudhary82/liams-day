@@ -442,6 +442,14 @@ function boot(){
   const saved = recall(PIN_KEY);
   if (saved){ document.getElementById('pin').value = saved; unlock(); }
   else document.getElementById('pin').focus();
+
+  // Same safety net as the board. Susan can't save without a connection
+  // anyway, but the page opening beats an error screen.
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
 })();
 </script>
 </body>
