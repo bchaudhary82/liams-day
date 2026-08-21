@@ -1,0 +1,4 @@
+node_modules/
+.local-store.json
+.local-store.json.tmp
+.env
