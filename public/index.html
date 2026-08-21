@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf8f2">
+<title>Liam's Day</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>">
+<style>
+  /* Melody's board. Read-only, glanceable, large type.
+     Light only and explicitly painted — this is a kiosk on a Fire tablet,
+     not a page that should follow a system theme it can't control. */
+  :root{
+    --bg:#fdf8f2; --card:#fff; --ink:#2f2a26; --muted:#7d736b; --line:#ece3d8;
+    --breakfast:#f6c453; --amsnack:#8fc98f; --lunch:#7fb3d5; --pmsnack:#c9a0dc;
+    --dinner:#eb9e6f; --notes:#a8a29b; --chores:#9bb0c4;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",
+      "PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:20px; line-height:1.45; padding:0 0 3rem;
+    -webkit-text-size-adjust:100%;
+  }
+
+  header{padding:1.4rem 1.5rem .9rem;display:flex;align-items:flex-start;
+    justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  h1{margin:0;font-size:2.1rem;letter-spacing:-.02em}
+  .date{margin:.15rem 0 0;color:var(--muted);font-size:1.05rem}
+
+  /* The only two controls on the page. Both navigation, neither writes. */
+  .lang{display:flex;border:2px solid var(--line);border-radius:999px;
+    overflow:hidden;background:var(--card);flex:none}
+  .lang button{appearance:none;border:0;background:transparent;color:var(--muted);
+    font:inherit;font-size:1rem;padding:.5rem 1.1rem;cursor:pointer}
+  .lang button[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+  .tabs{display:flex;gap:.6rem;padding:0 1.5rem 1rem}
+  .tabs button{flex:1;appearance:none;font:inherit;font-size:1.15rem;
+    padding:.85rem 1rem;border-radius:14px;border:2px solid var(--line);
+    background:var(--card);color:var(--muted);cursor:pointer;font-weight:600}
+  .tabs button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tabs[hidden]{display:none}
+
+  main{padding:0 1.5rem;display:grid;gap:1rem}
+  section{background:var(--card);border-radius:18px;padding:1.05rem 1.25rem 1.15rem;
+    border:1px solid var(--line);border-left:10px solid var(--accent,var(--line))}
+  h2{margin:0 0 .6rem;font-size:1.25rem;letter-spacing:-.01em}
+  h2 .en-sub{display:block;font-size:.9rem;color:var(--muted);font-weight:500}
+  ul{margin:0;padding:0;list-style:none;display:grid;gap:.5rem}
+  li{font-size:1.3rem;padding-left:1.4rem;position:relative}
+  li::before{content:"";position:absolute;left:.35rem;top:.62em;width:7px;height:7px;
+    border-radius:50%;background:var(--accent,var(--muted))}
+  li .en-sub{display:block;font-size:.95rem;color:var(--muted);padding-top:.1rem}
+
+  .contacts{border-left-color:var(--line);background:#fbf6ef}
+  .contacts ul{gap:.35rem}
+  .contacts li{font-size:1.15rem;padding-left:0}
+  .contacts li::before{display:none}
+  .contacts .who{color:var(--muted);font-size:.95rem}
+  .contacts .num{font-variant-numeric:tabular-nums;font-weight:600}
+
+  footer{padding:1.4rem 1.5rem 0;color:var(--muted);font-size:.9rem;text-align:center}
+  .stale{color:#a8642a}
+
+  .empty{padding:3rem 1.5rem;text-align:center;color:var(--muted);font-size:1.2rem}
+
+  @media (min-width:820px){
+    body{font-size:22px}
+    main{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+    h1{font-size:2.5rem}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1 id="title">Liam's Day</h1>
+    <p class="date" id="date">&nbsp;</p>
+  </div>
+  <div class="lang" role="group" aria-label="Language">
+    <button id="btn-en" aria-pressed="true" onclick="setLang('en')">English</button>
+    <button id="btn-zh" aria-pressed="false" onclick="setLang('zh')">中文</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs" hidden>
+  <button id="tab-liam" aria-pressed="true" onclick="setTab('liam')"></button>
+  <button id="tab-todo" aria-pressed="false" onclick="setTab('todo')"></button>
+</nav>
+
+<main id="board"></main>
+<footer id="footer"></footer>
+
+<script>
+/* ------------------------------------------------------------------ copy */
+const T = {
+  breakfast:{en:'Breakfast',       zh:'早餐'},
+  amSnack:  {en:'Morning snack',   zh:'上午加餐'},
+  lunch:    {en:'Lunch',           zh:'午餐'},
+  pmSnack:  {en:'Afternoon snack', zh:'下午加餐'},
+  notes:    {en:'Notes',           zh:'注意事项'},
+  dinner:   {en:'Dinner for Mum and Dad', zh:'爸爸妈妈的晚饭'},
+  chores:   {en:'If there is time', zh:'有时间的话'},
+  contacts: {en:'If you need us',   zh:'需要联系我们'},
+  tabLiam:  {en:'Liam',             zh:'利亚姆'},
+  tabTodo:  {en:'Also to do',       zh:'还要做'},
+  nothing:  {en:'Nothing planned yet for today.', zh:'今天还没有安排。'},
+  updated:  {en:'Last updated',     zh:'最后更新'},
+  offline:  {en:'Showing the last saved plan — no connection right now.',
+             zh:'显示上次保存的安排——现在没有网络。'},
+};
+const ACCENT = {breakfast:'--breakfast',amSnack:'--amsnack',lunch:'--lunch',
+  pmSnack:'--pmsnack',dinner:'--dinner',notes:'--notes',chores:'--chores'};
+
+const TAB1 = ['breakfast','amSnack','lunch','pmSnack','notes'];
+const TAB2 = ['dinner','chores'];
+const TZ = 'America/Edmonton';
+const CACHE_KEY = 'liams-day-cache';
+
+let lang = 'en';
+let tab  = 'liam';
+let data = null;
+let lastStamp = null;
+
+/* Reading and writing browser storage can throw outright in some contexts
+   (private windows, blocked site data), so every touch is guarded. */
+function remember(key, value){ try{ localStorage.setItem(key, value); }catch(e){} }
+function recall(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
+
+/* ------------------------------------------------------------- rendering */
+const esc = (s) => String(s).replace(/[&<>"]/g, c => (
+  {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function label(key){ return T[key][lang] || T[key].en; }
+
+/* In Chinese mode each line shows the Chinese with the English underneath,
+   so Melody is never cut off from the words Susan actually typed. An item
+   with no Chinese simply shows English — never a blank line. */
+function itemHtml(item){
+  if (lang === 'zh' && item.zh) {
+    return `<li>${esc(item.zh)}<span class="en-sub">${esc(item.en)}</span></li>`;
+  }
+  return `<li>${esc(item.en)}</li>`;
+}
+
+function sectionHtml(key, items){
+  if (!items.length) return '';                 // empty sections hide themselves
+  const head = lang === 'zh'
+    ? `${esc(T[key].zh)}<span class="en-sub">${esc(T[key].en)}</span>`
+    : esc(T[key].en);
+  return `<section style="--accent:var(${ACCENT[key]})">
+      <h2>${head}</h2>
+      <ul>${items.map(itemHtml).join('')}</ul>
+    </section>`;
+}
+
+function poolFor(key){
+  if (key === 'dinner') return 'dinner';
+  if (key === 'notes')  return 'notes';
+  if (key === 'chores') return 'chores';
+  return 'food';
+}
+
+/* Resolve ids to items, PRESERVING ARRAY ORDER exactly. No sort, no dedupe. */
+function itemsFor(key){
+  if (!data) return [];
+  const pool = data.library?.[poolFor(key)] || [];
+  const byId = new Map(pool.map(i => [i.id, i]));
+  return (data.plan?.[key] || [])
+    .map(id => byId.get(id))
+    .filter(Boolean);
+}
+
+function contactsHtml(){
+  const list = data?.contacts || [];
+  if (!list.length) return '';
+  const head = lang === 'zh'
+    ? `${esc(T.contacts.zh)}<span class="en-sub">${esc(T.contacts.en)}</span>`
+    : esc(T.contacts.en);
+  return `<section class="contacts"><h2>${head}</h2><ul>${
+    list.map(c => `<li><span class="who">${esc(c.label)}</span> —
+      <span class="num">${esc(c.phone)}</span></li>`).join('')
+  }</ul></section>`;
+}
+
+function prettyDate(iso){
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-CA', {
+    weekday:'long', month:'long', day:'numeric', timeZone:'UTC',
+  }).format(new Date(Date.UTC(y, m-1, d, 12)));
+}
+
+function render(){
+  document.documentElement.lang = lang === 'zh' ? 'zh-Hans' : 'en';
+  document.getElementById('btn-en').setAttribute('aria-pressed', lang==='en');
+  document.getElementById('btn-zh').setAttribute('aria-pressed', lang==='zh');
+  document.getElementById('date').textContent = prettyDate(data?.date);
+
+  const todoCount = TAB2.reduce((n,k) => n + itemsFor(k).length, 0);
+  const tabs = document.getElementById('tabs');
+
+  // The count sits in the tab label, so Melody knows something is waiting
+  // without tapping. No chores, no tab at all.
+  tabs.hidden = todoCount === 0;
+  if (todoCount === 0 && tab === 'todo') tab = 'liam';
+  document.getElementById('tab-liam').textContent = label('tabLiam');
+  document.getElementById('tab-todo').textContent = `${label('tabTodo')} (${todoCount})`;
+  document.getElementById('tab-liam').setAttribute('aria-pressed', tab==='liam');
+  document.getElementById('tab-todo').setAttribute('aria-pressed', tab==='todo');
+
+  const keys = tab === 'liam' ? TAB1 : TAB2;
+  let html = keys.map(k => sectionHtml(k, itemsFor(k))).join('');
+  if (tab === 'liam') html += contactsHtml();
+  if (!html) html = `<p class="empty">${esc(T.nothing[lang])}</p>`;
+  document.getElementById('board').innerHTML = html;
+
+  const foot = document.getElementById('footer');
+  if (!data?.updatedAt) { foot.textContent = ''; return; }
+  const when = new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-CA', {
+    hour:'numeric', minute:'2-digit', timeZone: TZ,
+  }).format(new Date(data.updatedAt));
+  foot.innerHTML = data.offline
+    ? `<span class="stale">${esc(T.offline[lang])}</span><br>${esc(T.updated[lang])} ${esc(when)}`
+    : `${esc(T.updated[lang])} ${esc(when)}`;
+}
+
+/* ------------------------------------------------------------- behaviour */
+function setLang(next){ lang = next; remember('liams-day-lang', next); render(); }
+function setTab(next){ tab = next; render(); }
+window.setLang = setLang; window.setTab = setTab;
+
+function todayLocal(){
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit',
+  }).format(new Date());
+}
+
+async function refresh(){
+  const date = todayLocal();
+  const rolled = data && data.date !== date;      // midnight rollover
+  const qs = `?date=${date}` + (lastStamp && !rolled
+    ? `&since=${encodeURIComponent(lastStamp)}` : '');
+  try {
+    const res = await fetch(`/api/day${qs}`, { cache:'no-store' });
+    if (!res.ok) throw new Error(res.status);
+    const body = await res.json();
+    if (body.unchanged) { if (data?.offline){ data.offline=false; render(); } return; }
+    data = body; data.offline = false;
+    lastStamp = body.updatedAt;
+    remember(CACHE_KEY, JSON.stringify(body));    // survive a wifi drop
+    render();
+  } catch (e) {
+    // A stale board beats a broken one. Keep showing the last good plan.
+    if (data) { data.offline = true; render(); }
+  }
+}
+
+/* Start from cache so the tablet paints instantly, then go get the truth. */
+(function start(){
+  const saved = recall('liams-day-lang');
+  if (saved === 'zh' || saved === 'en') lang = saved;
+  const cached = recall(CACHE_KEY);
+  if (cached) {
+    try {
+      const body = JSON.parse(cached);
+      if (body.date === todayLocal()) { data = body; lastStamp = body.updatedAt; }
+    } catch(e){}
+  }
+  render();
+  refresh();
+  setInterval(refresh, 60000);                    // once a minute is plenty
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refresh();              // and whenever she picks it up
+  });
+})();
+</script>
+</body>
+</html>

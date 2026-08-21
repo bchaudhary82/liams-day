@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fdf8f2">
+<title>Liam's Day — plan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>">
+<style>
+  /* Susan's phone. Built for one-handed use in bed, tired. Big targets,
+     nothing clever, one explicit save button. */
+  :root{
+    --bg:#fdf8f2; --card:#fff; --ink:#2f2a26; --muted:#7d736b; --line:#ece3d8;
+    --breakfast:#f6c453; --amsnack:#8fc98f; --lunch:#7fb3d5; --pmsnack:#c9a0dc;
+    --dinner:#eb9e6f; --notes:#a8a29b; --chores:#9bb0c4;
+    --go:#2f6f4e;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",
+      "PingFang SC","Hiragino Sans GB",sans-serif;
+    font-size:17px;line-height:1.4;padding-bottom:6.5rem;-webkit-text-size-adjust:100%}
+  button{font:inherit}
+
+  /* ---------------------------------------------------------- PIN gate */
+  #gate{position:fixed;inset:0;background:var(--bg);z-index:50;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:2rem}
+  #gate h1{margin:0;font-size:1.6rem}
+  #gate p{margin:0;color:var(--muted);text-align:center}
+  #pin{font-size:2rem;letter-spacing:.5em;text-align:center;width:100%;max-width:260px;
+    padding:.7rem;border:2px solid var(--line);border-radius:14px;background:#fff;
+    color:var(--ink);text-indent:.5em}
+  #gate button{background:var(--ink);color:#fff;border:0;border-radius:14px;
+    padding:.8rem 2rem;font-size:1.05rem;font-weight:600}
+  #gate .err{color:#b3402c;min-height:1.3em;font-size:.95rem}
+
+  header{padding:1.1rem 1rem .5rem}
+  h1{margin:0;font-size:1.5rem}
+  .sub{color:var(--muted);font-size:.95rem;margin:.15rem 0 0}
+
+  .daypick{display:flex;gap:.5rem;padding:.7rem 1rem 0}
+  .daypick button{flex:1;padding:.75rem;border-radius:12px;border:2px solid var(--line);
+    background:#fff;color:var(--muted);font-weight:600}
+  .daypick button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+  .toolbar{display:flex;gap:.5rem;padding:.7rem 1rem 0}
+  .ghost{flex:1;padding:.7rem;border-radius:12px;border:2px dashed var(--line);
+    background:transparent;color:var(--muted);font-weight:600}
+
+  main{padding:1rem;display:grid;gap:.9rem}
+  section{background:var(--card);border-radius:16px;padding:.85rem 1rem 1rem;
+    border:1px solid var(--line);border-left:9px solid var(--accent,var(--line))}
+  h2{margin:0 0 .5rem;font-size:1.05rem}
+  ol{list-style:none;margin:0 0 .6rem;padding:0;display:grid;gap:.4rem}
+  ol:empty{margin:0}
+  li{display:flex;align-items:center;gap:.5rem;background:#fbf7f1;
+    border-radius:11px;padding:.45rem .5rem .45rem .6rem}
+  .num{min-width:1.5rem;height:1.5rem;border-radius:50%;background:var(--accent,var(--muted));
+    color:#fff;font-size:.8rem;font-weight:700;display:grid;place-items:center;flex:none}
+  .txt{flex:1;min-width:0;overflow-wrap:anywhere}
+  .zh{display:block;font-size:.8rem;color:var(--muted)}
+  .mv{width:2rem;height:2rem;border-radius:9px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);flex:none}
+  .mv[disabled]{opacity:.3}
+  .rm{width:2rem;height:2rem;border-radius:9px;border:1px solid var(--line);
+    background:#fff;color:#b3402c;flex:none;font-size:1.1rem;line-height:1}
+  .add{width:100%;padding:.65rem;border-radius:11px;border:2px dashed var(--line);
+    background:transparent;color:var(--muted);font-weight:600}
+
+  /* ------------------------------------------------------- bottom sheet */
+  #scrim{position:fixed;inset:0;background:rgba(30,25,20,.45);z-index:20;display:none}
+  #scrim.on{display:block}
+  #sheet{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);
+    border-radius:22px 22px 0 0;padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    max-height:82vh;display:none;flex-direction:column;gap:.7rem}
+  #sheet.on{display:flex}
+  .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+  .sheet-head h3{margin:0;font-size:1.1rem}
+  .close{border:0;background:#f1eae1;border-radius:10px;padding:.45rem .8rem;color:var(--muted);font-weight:600}
+  .newrow{display:flex;gap:.5rem}
+  .newrow input{flex:1;min-width:0;padding:.7rem;border:2px solid var(--line);
+    border-radius:12px;background:#fff;color:var(--ink);font-size:1rem}
+  .newrow button{background:var(--go);color:#fff;border:0;border-radius:12px;padding:.7rem 1rem;font-weight:600}
+  .pool{overflow-y:auto;display:grid;gap:.4rem;padding-bottom:.3rem}
+  .pool button{text-align:left;padding:.7rem .8rem;border-radius:12px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);display:flex;align-items:center;gap:.6rem}
+  .pool button[aria-pressed="true"]{border-color:var(--go);background:#f0f7f2}
+  .tick{width:1.4rem;flex:none;color:var(--go);font-weight:700}
+
+  /* -------------------------------------------------------- save bar */
+  .savebar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(253,248,242,.96);
+    border-top:1px solid var(--line);padding:.7rem 1rem calc(.7rem + env(safe-area-inset-bottom));
+    display:flex;gap:.6rem;align-items:center;backdrop-filter:blur(6px)}
+  .save{flex:1;background:var(--go);color:#fff;border:0;border-radius:14px;
+    padding:.95rem;font-size:1.05rem;font-weight:700}
+  .save[disabled]{opacity:.55}
+  .status{font-size:.9rem;color:var(--muted);min-width:0;flex:1;text-align:right}
+  .status.bad{color:#b3402c}
+  .status.good{color:var(--go)}
+
+  .gear{background:transparent;border:0;color:var(--muted);text-decoration:underline;
+    padding:.4rem 0;font-size:.95rem}
+  @media (min-width:760px){ main{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start} }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h1>Liam's Day</h1>
+  <p>Enter your PIN to plan the day.</p>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="off"
+         maxlength="8" aria-label="PIN">
+  <div class="err" id="gate-err"></div>
+  <button onclick="unlock()">Open</button>
+</div>
+
+<header>
+  <h1 id="head">Tomorrow's plan</h1>
+  <p class="sub" id="sub">&nbsp;</p>
+</header>
+
+<div class="daypick">
+  <button id="d-today" onclick="pickDay('today')">Today</button>
+  <button id="d-tomorrow" onclick="pickDay('tomorrow')">Tomorrow</button>
+</div>
+
+<div class="toolbar">
+  <button class="ghost" onclick="copyYesterday()">↺ Same as yesterday</button>
+</div>
+
+<main id="app"></main>
+
+<div style="padding:0 1rem">
+  <button class="gear" onclick="openContacts()">⚙ Emergency contacts</button>
+</div>
+
+<div class="savebar">
+  <button class="save" id="savebtn" onclick="saveAll()">Save &amp; send to tablet</button>
+  <span class="status" id="status"></span>
+</div>
+
+<div id="scrim" onclick="closeSheet()"></div>
+<div id="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-head"><h3 id="sheet-title"></h3>
+    <button class="close" onclick="closeSheet()">Done</button></div>
+  <div class="newrow">
+    <input id="newitem" placeholder="Type something new…" autocomplete="off">
+    <button onclick="addNew()">Add</button>
+  </div>
+  <div class="pool" id="pool"></div>
+</div>
+
+<script>
+/* ------------------------------------------------------------- sections */
+const SECTIONS = [
+  {key:'breakfast', title:'Breakfast',        pool:'food',   verb:'food'},
+  {key:'amSnack',   title:'Morning snack',    pool:'food',   verb:'food'},
+  {key:'lunch',     title:'Lunch',            pool:'food',   verb:'food'},
+  {key:'pmSnack',   title:'Afternoon snack',  pool:'food',   verb:'food'},
+  {key:'dinner',    title:'Family dinner',    pool:'dinner', verb:'a dinner'},
+  {key:'notes',     title:'Notes for Melody', pool:'notes',  verb:'a note'},
+  {key:'chores',    title:'If there is time', pool:'chores', verb:'a job'},
+];
+const TZ = 'America/Edmonton';
+const PIN_KEY = 'liams-day-pin';
+
+let pin = '';
+let which = 'tomorrow';
+let date = null;
+let plan = null;
+let library = null;
+let contacts = [];
+let sheetKey = null;
+let dirty = false;
+
+/* localStorage can throw outright in some browsers — guard every touch. */
+const remember=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const recall=(k)=>{try{return localStorage.getItem(k)}catch(e){return null}};
+
+const esc = (s) => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = (d,o)=>new Intl.DateTimeFormat('en-CA',o).format(d);
+
+function todayLocal(){
+  return fmt(new Date(),{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
+}
+function localHour(){
+  return Number(fmt(new Date(),{timeZone:TZ,hour:'2-digit',hour12:false}));
+}
+function shift(iso,n){
+  const [y,m,d]=iso.split('-').map(Number);
+  const t=new Date(Date.UTC(y,m-1,d,12)+n*86400000);
+  return fmt(t,{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'});
+}
+function pretty(iso){
+  const [y,m,d]=iso.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-CA',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'})
+    .format(new Date(Date.UTC(y,m-1,d,12)));
+}
+
+/* ----------------------------------------------------------- PIN gate */
+async function unlock(){
+  const val = document.getElementById('pin').value.trim();
+  const err = document.getElementById('gate-err');
+  if (!val) { err.textContent = 'Enter your PIN.'; return; }
+  err.textContent = 'Checking…';
+  pin = val;
+  // A harmless probe write proves the PIN before Susan builds a whole plan
+  // and only then discovers it was wrong.
+  const d = todayLocal();
+  const cur = await fetch(`/api/day?date=${d}`).then(r=>r.json());
+  const res = await fetch('/api/save',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-pin':pin},
+    body:JSON.stringify({date:d, plan:cur.plan, library:cur.library, contacts:cur.contacts}),
+  });
+  if (res.status === 401){ err.textContent = 'That PIN is not right.'; pin=''; return; }
+  if (!res.ok){ err.textContent = 'Could not reach the server. Try again.'; pin=''; return; }
+  remember(PIN_KEY, pin);
+  document.getElementById('gate').style.display='none';
+  boot();
+}
+window.unlock = unlock;
+document.getElementById('pin').addEventListener('keydown',e=>{ if(e.key==='Enter') unlock(); });
+
+/* -------------------------------------------------------------- load */
+async function load(){
+  date = which === 'today' ? todayLocal() : shift(todayLocal(),1);
+  const res = await fetch(`/api/day?date=${date}`,{cache:'no-store'});
+  const body = await res.json();
+  plan = body.plan;
+  library = body.library;
+  contacts = body.contacts || [];
+  dirty = false;
+  render();
+}
+
+function pickDay(w){
+  if (dirty && !confirm('You have unsaved changes. Switch day anyway?')) return;
+  which = w; load();
+}
+window.pickDay = pickDay;
+
+async function copyYesterday(){
+  const src = shift(date,-1);
+  const body = await fetch(`/api/day?date=${src}`,{cache:'no-store'}).then(r=>r.json());
+  const any = Object.values(body.plan).some(a=>Array.isArray(a)&&a.length);
+  if (!any){ status(`Nothing saved for ${pretty(src)}.`,'bad'); return; }
+  plan = body.plan; dirty = true; render();
+  status('Copied. Change what you need, then save.','good');
+}
+window.copyYesterday = copyYesterday;
+
+/* ------------------------------------------------------------ render */
+function itemById(pool,id){ return (library?.[pool]||[]).find(i=>i.id===id); }
+
+function render(){
+  document.getElementById('head').textContent =
+    which==='today' ? "Today's plan" : "Tomorrow's plan";
+  document.getElementById('sub').textContent = pretty(date);
+  document.getElementById('d-today').setAttribute('aria-pressed', which==='today');
+  document.getElementById('d-tomorrow').setAttribute('aria-pressed', which==='tomorrow');
+
+  document.getElementById('app').innerHTML = SECTIONS.map(s=>{
+    const ids = plan[s.key]||[];
+    const rows = ids.map((id,i)=>{
+      const it = itemById(s.pool,id);
+      if (!it) return '';
+      // The number IS the position. Tap order becomes display order.
+      return `<li>
+        <span class="num">${i+1}</span>
+        <span class="txt">${esc(it.en)}${it.zh?`<span class="zh">${esc(it.zh)}</span>`:''}</span>
+        <button class="mv" ${i===0?'disabled':''} onclick="move('${s.key}',${i},-1)" aria-label="Move up">▲</button>
+        <button class="mv" ${i===ids.length-1?'disabled':''} onclick="move('${s.key}',${i},1)" aria-label="Move down">▼</button>
+        <button class="rm" onclick="drop('${s.key}',${i})" aria-label="Remove">×</button>
+      </li>`;
+    }).join('');
+    return `<section style="--accent:var(--${s.key.toLowerCase()})">
+      <h2>${esc(s.title)}</h2>
+      <ol>${rows}</ol>
+      <button class="add" onclick="openSheet('${s.key}')">+ Add ${esc(s.verb)}</button>
+    </section>`;
+  }).join('');
+}
+
+/* Reordering is a swap of two array positions. Nothing sorts, ever. */
+function move(key,i,dir){
+  const a = plan[key]; const j = i+dir;
+  if (j<0 || j>=a.length) return;
+  [a[i],a[j]] = [a[j],a[i]];
+  dirty = true; render();
+}
+function drop(key,i){ plan[key].splice(i,1); dirty = true; render(); }
+window.move = move; window.drop = drop;
+
+/* ------------------------------------------------------------- sheet */
+function openSheet(key){
+  sheetKey = key;
+  const s = SECTIONS.find(x=>x.key===key);
+  document.getElementById('sheet-title').textContent = `${s.title} — tap to add`;
+  document.getElementById('newitem').value = '';
+  document.getElementById('newitem').placeholder = `Type ${s.verb} that isn't listed…`;
+  renderPool();
+  document.getElementById('sheet').classList.add('on');
+  document.getElementById('scrim').classList.add('on');
+}
+function closeSheet(){
+  sheetKey = null;
+  document.getElementById('sheet').classList.remove('on');
+  document.getElementById('scrim').classList.remove('on');
+}
+window.openSheet = openSheet; window.closeSheet = closeSheet;
+
+function renderPool(){
+  const s = SECTIONS.find(x=>x.key===sheetKey);
+  const chosen = plan[sheetKey]||[];
+  document.getElementById('pool').innerHTML = (library[s.pool]||[]).map(it=>{
+    const at = chosen.indexOf(it.id);
+    return `<button aria-pressed="${at>=0}" onclick="toggle('${it.id}')">
+      <span class="tick">${at>=0?`#${at+1}`:''}</span>
+      <span class="txt">${esc(it.en)}${it.zh?`<span class="zh">${esc(it.zh)}</span>`:''}</span>
+    </button>`;
+  }).join('') || `<p style="color:var(--muted);margin:.5rem 0">Nothing saved here yet — type one above.</p>`;
+}
+
+function toggle(id){
+  const arr = plan[sheetKey];
+  const at = arr.indexOf(id);
+  if (at>=0) arr.splice(at,1); else arr.push(id);   // push = appended in tap order
+  dirty = true; renderPool(); render();
+}
+window.toggle = toggle;
+
+function addNew(){
+  const input = document.getElementById('newitem');
+  const text = input.value.trim();
+  if (!text) return;
+  const s = SECTIONS.find(x=>x.key===sheetKey);
+  // New items join the permanent library, so it's type once, tap forever.
+  const id = `${s.pool[0]}${Date.now().toString(36)}${Math.floor(Math.random()*999)}`;
+  library[s.pool].push({id, en:text, zh:''});
+  plan[sheetKey].push(id);
+  input.value = '';
+  dirty = true; renderPool(); render();
+}
+window.addNew = addNew;
+
+/* ---------------------------------------------------------- contacts */
+function openContacts(){
+  const current = contacts.map(c=>`${c.label} | ${c.phone}`).join('\n');
+  const next = prompt(
+    'One per line:  Name | Number\n\nThese show on Melody\'s board.', current);
+  if (next === null) return;
+  contacts = next.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
+    const [label,...rest] = l.split('|');
+    return {label:(label||'').trim(), phone:rest.join('|').trim()};
+  }).filter(c=>c.label);
+  dirty = true;
+  status('Contacts updated — remember to save.','good');
+}
+window.openContacts = openContacts;
+
+/* -------------------------------------------------------------- save */
+function status(msg,kind=''){
+  const el = document.getElementById('status');
+  el.textContent = msg; el.className = `status ${kind}`;
+}
+
+async function saveAll(){
+  const btn = document.getElementById('savebtn');
+  btn.disabled = true; status('Saving…');
+  try{
+    const res = await fetch('/api/save',{
+      method:'POST',
+      headers:{'content-type':'application/json','x-pin':pin},
+      body:JSON.stringify({date, plan, library, contacts}),
+    });
+    if (res.status === 401){ status('PIN was rejected.','bad'); btn.disabled=false; return; }
+    if (!res.ok) throw new Error(res.status);
+    dirty = false;
+    status("Saved — Melody's tablet will show this.",'good');
+  }catch(e){
+    // Susan's input stays on screen. Never silently lose a plan.
+    status('Could not save. Your plan is still here — try again.','bad');
+  }
+  btn.disabled = false;
+}
+window.saveAll = saveAll;
+
+addEventListener('beforeunload', (e)=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
+
+/* -------------------------------------------------------------- boot */
+function boot(){
+  // She plans at night, so after 6pm the sensible default is tomorrow.
+  which = localHour() >= 18 ? 'tomorrow' : 'today';
+  load();
+}
+(function start(){
+  const saved = recall(PIN_KEY);
+  if (saved){ document.getElementById('pin').value = saved; unlock(); }
+  else document.getElementById('pin').focus();
+})();
+</script>
+</body>
+</html>

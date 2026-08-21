@@ -1,0 +1,19 @@
+{
+  "name": "liams-day",
+  "version": "1.0.0",
+  "description": "Daily nanny board — Susan plans on her phone, Melody reads on the tablet.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node test/run.js",
+    "seed": "node seed.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@netlify/blobs": "^11.0.1"
+  },
+  "type": "module",
+  "private": true
+}
