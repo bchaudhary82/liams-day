@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 
 const BASE = `http://127.0.0.1:${process.env.PORT || 8890}`;
 const PIN = process.env.EDIT_PIN || '4821';
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 
 let passed = 0; let failed = 0; const out = [];
 const check = (n, ok, d = '') => {
@@ -46,7 +46,7 @@ check('entering the PIN does not write anything to the day',
 const titles = await page.$$eval('#app h2', (e) => e.map((x) => x.textContent.trim()));
 check('every section Susan asked for is editable',
   ['Breakfast', 'Morning snack', 'Lunch', 'Afternoon snack',
-    'Family dinner', 'Notes for Melody', 'If there is time']
+    'Family dinner', 'Notes for Melody', 'Note just for this day', 'If there is time']
     .every((t) => titles.includes(t)), titles.join(','));
 
 /* --------------------------------------------- tap order = display order */
@@ -112,7 +112,7 @@ await page.waitForTimeout(350);   // let the slide-in finish before measuring
 check('saving shows a confirmation banner, not a subtle line',
   await page.isVisible('#toast.on'));
 check('the confirmation says plainly what happened',
-  (await page.textContent('#toast-msg')).includes("Melody's tablet"));
+  (await page.textContent('#toast-msg')).includes("Liam's tablet"));
 const toastBox = await page.locator('#toast').boundingBox();
 const vh = await page.evaluate(() => window.innerHeight);
 check('the banner is big enough to notice', toastBox.height >= 44, `${toastBox?.height}px`);
@@ -121,7 +121,7 @@ check('the banner is actually inside the screen, not below the fold',
   `top ${Math.round(toastBox.y)}, bottom ${Math.round(toastBox.y + toastBox.height)}, viewport ${vh}`);
 check('the button itself also confirms',
   (await page.textContent('#savebtn')).includes('Saved'));
-await page.waitForTimeout(3600);
+await page.waitForTimeout(4600);
 check('the confirmation clears itself so it never blocks the page',
   !(await page.isVisible('#toast.on')));
 
@@ -153,29 +153,38 @@ rows = await namesIn(sectionFor('Breakfast'));
 check('the plan is still there after a reload',
   rows.join('|') === 'Pear|Avocado|Milk|Kiwi, peeled and diced', rows.join('|'));
 
-/* -------------------------------------------------- same as yesterday */
-await page.evaluate(async (p) => {
-  const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Edmonton' }).format(new Date());
-  const [y, m, dd] = d.split('-').map(Number);
-  const prev = new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' })
-    .format(new Date(Date.UTC(y, m - 1, dd, 12) - 86400000));
+/* -------------------------------------------------- copy last plan */
+// Plan a day a week out, with a saved day two days before it and an empty
+// day in between — the Friday / empty weekend / Monday shape.
+const plannerToday = await page.evaluate(() => todayLocal());
+const plusDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12) + n * 86400000).toISOString().slice(0, 10); };
+const target = plusDays(plannerToday, 7);
+const source = plusDays(plannerToday, 5);
+await page.evaluate(async ([p, d]) => {
   await fetch('/api/save', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-pin': p },
-    body: JSON.stringify({ date: prev, plan: { breakfast: ['f18'], amSnack: [], lunch: [], pmSnack: [], dinner: [], notes: [], chores: [] } }),
+    body: JSON.stringify({ date: d, plan: { breakfast: ['f18'], amSnack: [], lunch: [], pmSnack: [], dinner: [], notes: [], chores: [] }, standingNotes: standing }),
   });
-}, PIN);
-await page.click('.ghost');
+}, [PIN, source]);
+await page.click(`#daypick button[data-date="${target}"]`);
+await page.waitForFunction((t) => date === t, target);
+await page.click('#copybtn');
 await page.waitForTimeout(400);
 rows = await namesIn(sectionFor('Breakfast'));
-check('"same as yesterday" pulls the previous day forward',
+check('"copy last plan" skips the empty day and pulls the last saved plan forward',
   rows.length === 1 && rows[0] === 'Strawberries', rows.join('|'));
+check('copying says which day it came from',
+  (await page.textContent('#toast-msg')).includes('Copied'));
 
 /* ------------------------------------------------------ default day */
-const headText = await page.textContent('#head');
-check('the page opens on today or tomorrow depending on the hour',
-  ['Today’s plan', "Today's plan", "Tomorrow's plan"].includes(headText.trim()), headText);
-
+const expectHead = await page.evaluate(() => `${weekday(defaultDate())}'s plan`);
+await page.reload({ waitUntil: 'load' });
+await page.waitForSelector('#app section', { timeout: 5000 });
+const headText = (await page.textContent('#head')).trim();
+check('the page opens on the right default day, named by its weekday',
+  headText === expectHead, `${headText} vs ${expectHead}`);
 await browser.close();
 console.log('\n  Checkpoint 3 — Susan\'s edit page\n');
 console.log(out.join('\n'));

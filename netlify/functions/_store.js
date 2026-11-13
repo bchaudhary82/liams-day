@@ -10,7 +10,40 @@ import { getStore } from '@netlify/blobs';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+// Production keeps the store name it has always had, so Susan's saved days
+// are untouched. Every other deploy (a preview, a branch, local `netlify
+// dev`) gets its own separate store. A preview built to be tested on a phone
+// must never be able to overwrite the real plan: by default Netlify shares
+// one site-wide store across ALL deploys, previews included.
 const STORE_NAME = 'liams-day';
+const PREVIEW_STORE_NAME = 'liams-day-preview';
+
+let deployContext = null;
+
+/** Called by each function with the context Netlify hands it. */
+export function useContext(context) {
+  deployContext = context?.deploy?.context
+    || globalThis.Netlify?.context?.deploy?.context
+    || process.env.CONTEXT
+    || null;
+}
+
+export function storeName() {
+  // Unknown context is treated as production: that is what v1 always did,
+  // and guessing "preview" in production would hide every saved day from
+  // Melody's board. The preview is checked by hand before testing (the
+  // /api/day response reports which store answered).
+  if (!deployContext || deployContext === 'production') return STORE_NAME;
+  return PREVIEW_STORE_NAME;
+}
+
+// Strong consistency: a read straight after a save always sees that save.
+// The default ("eventual") can serve the previous version for up to about a
+// minute, so Susan reopening the planner right after saving could see — and
+// then save over — her old plan.
+function store() {
+  return getStore({ name: storeName(), consistency: 'strong' });
+}
 const LOCAL_FILE = process.env.LIAMS_DAY_LOCAL_STORE
   || path.join(process.cwd(), '.local-store.json');
 
@@ -40,8 +73,7 @@ async function localWriteAll(all) {
 
 export async function readKey(key) {
   if (onNetlify) {
-    const store = getStore(STORE_NAME);
-    return await store.get(key, { type: 'json' });
+    return await store().get(key, { type: 'json' });
   }
   const all = await localReadAll();
   return key in all ? all[key] : null;
@@ -49,8 +81,7 @@ export async function readKey(key) {
 
 export async function writeKey(key, value) {
   if (onNetlify) {
-    const store = getStore(STORE_NAME);
-    await store.setJSON(key, value);
+    await store().setJSON(key, value);
     return;
   }
   const all = await localReadAll();
@@ -62,6 +93,9 @@ export async function writeKey(key, value) {
 
 export const KEY_LIBRARY = 'library';
 export const KEY_CONTACTS = 'contacts';
+// Standing notes: shown every day until Susan removes them. v1 stored notes
+// inside each day, so they vanished overnight and on every unplanned day.
+export const KEY_STANDING_NOTES = 'standing-notes';
 export const dayKey = (date) => `day:${date}`;
 
 /* ------------------------------------------------------------- timezone */

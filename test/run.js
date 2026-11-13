@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { localDate, addDays, TZ } from '../netlify/functions/_store.js';
+import { localDate, addDays, TZ, useContext, storeName } from '../netlify/functions/_store.js';
 
 const PORT = 8899;
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -202,7 +202,7 @@ check('only the valid item survived', eq(junkRead.body.plan.breakfast, ['f-ok'])
 
 const empty = await get('?date=2026-12-25');
 check('an unplanned date returns an empty plan, not an error', empty.status === 200
-  && eq(empty.body.plan.breakfast, []) && empty.body.updatedAt === null);
+  && eq(empty.body.plan.breakfast, []) && empty.body.dayUpdatedAt === null);
 
 /* -------------------------------------------------------- 10. timezone */
 
@@ -251,6 +251,118 @@ check('verifying the PIN does not touch the stored plan',
 check('verifying the PIN does not bump the timestamp',
   afterVerify.body.updatedAt === beforeVerify.body.updatedAt,
   `${beforeVerify.body.updatedAt} -> ${afterVerify.body.updatedAt}`);
+
+/* ------------------------------------------------ 12. standing notes (v2) */
+// v1 kept notes inside each day, so they vanished overnight and on every
+// day Susan didn't plan (weekends). v2 keeps them until she removes them.
+
+const NOTE_DAY = '2026-11-16';     // a Monday
+const OTHER_DAY = '2026-11-18';    // never planned
+
+const un = await get(`?date=${OTHER_DAY}`);
+check('an unplanned day still shows the standing notes',
+  eq(un.body.plan.notes, planA.notes), JSON.stringify(un.body.plan.notes));
+
+const v2save = await save({
+  date: NOTE_DAY,
+  plan: { ...planA, notes: ['n-fluids'] },            // one-off, this day only
+  standingNotes: ['n-vitd', 'n-diaper'],              // every day, in this order
+  library,
+});
+check('a v2 save with separate standing notes is accepted', v2save.status === 200);
+
+const nd = await get(`?date=${NOTE_DAY}`);
+check('the planned day shows standing notes first, then its one-off note, in order',
+  eq(nd.body.plan.notes, ['n-vitd', 'n-diaper', 'n-fluids']), JSON.stringify(nd.body.plan.notes));
+check('standing and one-off notes come back separately for the planner',
+  eq(nd.body.standingNotes, ['n-vitd', 'n-diaper']) && eq(nd.body.dayNotes, ['n-fluids']));
+
+const od = await get(`?date=${OTHER_DAY}`);
+check('another day shows only the standing notes',
+  eq(od.body.plan.notes, ['n-vitd', 'n-diaper']), JSON.stringify(od.body.plan.notes));
+
+// A board left open on OTHER_DAY must notice a standing-note change.
+const stampBefore = od.body.updatedAt;
+await new Promise((r) => setTimeout(r, 5));
+await save({ date: NOTE_DAY, plan: { ...planA, notes: [] }, standingNotes: ['n-vitd'], library });
+const poll = await get(`?date=${OTHER_DAY}&since=${encodeURIComponent(stampBefore)}`);
+check('a board polling any day picks up a standing-note change',
+  poll.body.unchanged !== true && eq(poll.body.plan.notes, ['n-vitd']));
+
+// An OLD planner (v1 code, page left open from before the update) sends one
+// combined notes list and no standingNotes. It must not wipe or double them.
+await save({ date: NOTE_DAY, plan: { ...planA, notes: ['n-vitd', 'n-fluids'] }, library });
+const afterOld = await get(`?date=${OTHER_DAY}`);
+check('a save from an old planner copy becomes the standing notes',
+  eq(afterOld.body.plan.notes, ['n-vitd', 'n-fluids']), JSON.stringify(afterOld.body.plan.notes));
+const afterOldDay = await get(`?date=${NOTE_DAY}`);
+check('an old-planner save does not show notes twice',
+  eq(afterOldDay.body.plan.notes, ['n-vitd', 'n-fluids']), JSON.stringify(afterOldDay.body.plan.notes));
+check('meals are untouched by the notes change',
+  eq(afterOldDay.body.plan.breakfast, BREAKFAST));
+
+/* -------------------------------------------- 13. copy last plan (v2) */
+// v1 "same as yesterday" copied literally yesterday — Sunday, on a Monday.
+
+await save({ date: '2026-10-02', plan: { ...planA, lunch: ['f-peas'] }, standingNotes: ['n-vitd'], library });
+const lb = await get('?latestBefore=2026-10-05');
+check('copy-last-plan skips an empty weekend and finds Friday',
+  lb.body.date === '2026-10-02' && eq(lb.body.plan.lunch, ['f-peas']), lb.body.date);
+const none = await get('?latestBefore=2025-01-01');
+check('copy-last-plan reports nothing found instead of erroring', none.body.date === null);
+
+const sum = await get('?summary=1&from=2026-10-01&days=5');
+check('the week summary lists each day in order',
+  eq(sum.body.days.map((d) => d.date),
+    ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05']));
+check('the week summary marks which days have a plan',
+  sum.body.days[1].items > 0 && sum.body.days[2].items === 0);
+
+/* ------------------------------------------ 14. preview storage isolation */
+useContext({ deploy: { context: 'deploy-preview' } });
+check('a preview deploy uses its own separate store', storeName() === 'liams-day-preview');
+useContext({ deploy: { context: 'branch-deploy' } });
+check('a branch deploy uses its own separate store', storeName() === 'liams-day-preview');
+useContext({ deploy: { context: 'production' } });
+check('production keeps the original store name', storeName() === 'liams-day');
+useContext(null);
+check('an unknown context falls back to the original store', storeName() === 'liams-day');
+
+/* --------------------------------------- 15. migration from v1 notes */
+// The live site has notes stored inside each day and no standing list yet.
+// Straight after the update, today's board and every unplanned day must
+// still show the notes Susan already set up.
+{
+  const PORT2 = 8898;
+  const legacyFile = path.join(os.tmpdir(), `liams-day-legacy-${Date.now()}.json`);
+  const legacyDay = addDays(localDate(), -3);
+  await fs.writeFile(legacyFile, JSON.stringify({
+    library,
+    [`day:${legacyDay}`]: {
+      plan: { ...planA, notes: ['n-diaper', 'n-vitd'] },
+      updatedAt: '2026-11-10T14:00:00.000Z',
+    },
+  }));
+  const s2 = spawn(process.execPath, ['dev-server.js'], {
+    env: { ...process.env, PORT: String(PORT2), EDIT_PIN: PIN, LIAMS_DAY_LOCAL_STORE: legacyFile },
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+  let up = false;
+  for (let i = 0; i < 60 && !up; i += 1) {
+    try { up = (await fetch(`http://127.0.0.1:${PORT2}/api/day`)).ok; } catch { /* wait */ }
+    if (!up) await new Promise((r) => setTimeout(r, 100));
+  }
+  const t = await fetch(`http://127.0.0.1:${PORT2}/api/day?date=${localDate()}`).then((r) => r.json());
+  check("after the update, today shows the notes from Susan's last planned day",
+    eq(t.plan.notes, ['n-diaper', 'n-vitd']) && t.notesSource === 'migrated',
+    JSON.stringify(t.plan.notes));
+  const l = await fetch(`http://127.0.0.1:${PORT2}/api/day?date=${legacyDay}`).then((r) => r.json());
+  check('an old saved day does not show its notes twice',
+    eq(l.plan.notes, ['n-diaper', 'n-vitd']), JSON.stringify(l.plan.notes));
+  check('an old saved day keeps its meals exactly', eq(l.plan.breakfast, BREAKFAST));
+  s2.kill();
+  await fs.rm(legacyFile, { force: true });
+}
 
 /* ------------------------------------------------------------- report */
 

@@ -9,7 +9,7 @@
 import { chromium } from 'playwright';
 
 const BASE = `http://127.0.0.1:${process.env.PORT || 8890}`;
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const EXE = '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome';
 
 let passed = 0; let failed = 0; const out = [];
 const check = (n, ok, d = '') => {

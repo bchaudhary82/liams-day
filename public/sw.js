@@ -13,7 +13,7 @@
 // online. The cache is a safety net, never the source of truth — the classic
 // service-worker failure is pinning people to a stale version forever.
 
-const VERSION = 'liams-day-v1';
+const VERSION = 'liams-day-v2';
 const SHELL = ['/', '/index.html', '/edit.html'];
 
 self.addEventListener('install', (event) => {

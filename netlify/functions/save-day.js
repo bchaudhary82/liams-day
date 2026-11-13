@@ -7,8 +7,8 @@
 // browser holds is effectively published.
 
 import {
-  readKey, writeKey, dayKey, KEY_LIBRARY, KEY_CONTACTS,
-  sanitisePlan, isValidDate, json,
+  writeKey, dayKey, KEY_LIBRARY, KEY_CONTACTS, KEY_STANDING_NOTES,
+  sanitisePlan, isValidDate, json, useContext,
 } from './_store.js';
 
 const PIN = process.env.EDIT_PIN || '';
@@ -55,7 +55,11 @@ function sanitiseContacts(input) {
     .slice(0, 12);
 }
 
-export default async (req) => {
+const cleanIds = (arr) => (Array.isArray(arr)
+  ? arr.filter((id) => typeof id === 'string' && id.length > 0) : []);
+
+export default async (req, context) => {
+  useContext(context);
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
   if (!pinOk(req)) return json({ error: 'bad_pin' }, 401);
 
@@ -89,10 +93,23 @@ export default async (req) => {
     const contacts = sanitiseContacts(body.contacts);
     if (contacts) await writeKey(KEY_CONTACTS, contacts);
 
-    await writeKey(dayKey(date), {
-      plan: sanitisePlan(body.plan),   // order preserved exactly, see _store.js
-      updatedAt,
-    });
+    const plan = sanitisePlan(body.plan);   // order preserved exactly, see _store.js
+
+    // NOTES. The v2 planner sends the standing notes separately and keeps
+    // plan.notes for notes meant only for this day. A v1 planner (still open
+    // in someone's browser from before the update) sends one combined list
+    // in plan.notes — the same combined list v2 hands it when it reads. Treat
+    // that list as the standing notes, so an old copy can never wipe them.
+    let standing;
+    if (Array.isArray(body.standingNotes)) {
+      standing = cleanIds(body.standingNotes);
+    } else {
+      standing = plan.notes;
+      plan.notes = [];
+    }
+    await writeKey(KEY_STANDING_NOTES, { ids: standing, updatedAt });
+
+    await writeKey(dayKey(date), { plan, updatedAt });
   } catch (err) {
     return json({ error: 'storage_write_failed', detail: String(err) }, 503);
   }
