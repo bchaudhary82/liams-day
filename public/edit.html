@@ -39,10 +39,47 @@
   h1{margin:0;font-size:1.5rem}
   .sub{color:var(--muted);font-size:.95rem;margin:.15rem 0 0}
 
-  .daypick{display:flex;gap:.5rem;padding:.7rem 1rem 0}
-  .daypick button{flex:1;padding:.75rem;border-radius:12px;border:2px solid var(--line);
-    background:#fff;color:var(--muted);font-weight:600}
+  /* The day being planned has to be impossible to misread. v1 had two
+     buttons, "Today" and "Tomorrow", and a silent guess between them —
+     and saves landed on the wrong day (Sep 7, Oct 26, Nov 9). Every chip
+     now carries the real weekday and date. */
+  .eyebrow{margin:0;color:var(--muted);font-size:.85rem;font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em}
+  .daypick{display:flex;gap:.45rem;padding:.7rem 1rem .2rem;overflow-x:auto;
+    scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .daypick::-webkit-scrollbar{display:none}
+  .daypick button{flex:none;width:4.4rem;padding:.45rem .2rem .5rem;border-radius:14px;
+    border:2px solid var(--line);background:#fff;color:var(--ink);scroll-snap-align:start;
+    display:flex;flex-direction:column;align-items:center;gap:.05rem;position:relative}
+  .daypick .tag{font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.04em;min-height:1em}
+  .daypick .wd{font-size:.95rem;font-weight:700}
+  .daypick .dn{font-size:1.25rem;font-weight:800;line-height:1.1}
+  .daypick .dot{width:.45rem;height:.45rem;border-radius:50%;background:transparent;margin-top:.1rem}
+  .daypick .dot.on{background:var(--go)}
   .daypick button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .daypick button[aria-pressed="true"] .tag{color:#e9e1d6}
+  .daypick button[aria-pressed="true"] .dot.on{background:#9fd8b4}
+  .legend{padding:.15rem 1rem 0;color:var(--muted);font-size:.8rem}
+  .legend .dot{display:inline-block;width:.45rem;height:.45rem;border-radius:50%;
+    background:var(--go);margin-right:.3rem;vertical-align:middle}
+  .warnline{margin:.6rem 1rem 0;padding:.6rem .8rem;border-radius:12px;background:#fdecd9;
+    color:#7a3d12;font-size:.92rem;font-weight:600}
+  .warnline[hidden]{display:none}
+  .every{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.04em;margin:-.35rem 0 .5rem}
+
+  /* Wrong-day check: an in-page card, not a browser pop-up. */
+  #ask{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;
+    background:rgba(30,25,20,.5);padding:1rem}
+  #ask.on{display:flex}
+  #ask .card{background:#fff;border-radius:20px;padding:1.2rem 1.1rem calc(1rem + env(safe-area-inset-bottom));
+    width:100%;max-width:440px;display:grid;gap:.75rem}
+  #ask h3{margin:0;font-size:1.2rem}
+  #ask p{margin:0;color:var(--ink)}
+  #ask button{padding:.9rem;border-radius:14px;border:0;font-size:1.02rem;font-weight:700}
+  #ask .yes{background:var(--go);color:#fff}
+  #ask .no{background:#f1eae1;color:var(--ink)}
 
   .toolbar{display:flex;gap:.5rem;padding:.7rem 1rem 0}
   .ghost{flex:1;padding:.7rem;border-radius:12px;border:2px dashed var(--line);
@@ -131,17 +168,17 @@
 </div>
 
 <header>
-  <h1 id="head">Tomorrow's plan</h1>
+  <p class="eyebrow">Planning for</p>
+  <h1 id="head">&nbsp;</h1>
   <p class="sub" id="sub">&nbsp;</p>
 </header>
 
-<div class="daypick">
-  <button id="d-today" onclick="pickDay('today')">Today</button>
-  <button id="d-tomorrow" onclick="pickDay('tomorrow')">Tomorrow</button>
-</div>
+<div class="daypick" id="daypick" role="group" aria-label="Choose the day to plan"></div>
+<p class="legend"><span class="dot"></span>already has a plan</p>
+<p class="warnline" id="warnline" hidden></p>
 
 <div class="toolbar">
-  <button class="ghost" onclick="copyYesterday()">↺ Same as yesterday</button>
+  <button class="ghost" id="copybtn" onclick="copyLast()">↺ Copy last plan</button>
 </div>
 
 <main id="app"></main>
@@ -151,13 +188,22 @@
 </div>
 
 <div class="savebar">
-  <button class="save" id="savebtn" onclick="saveAll()">Save &amp; send to tablet</button>
+  <button class="save" id="savebtn" onclick="saveAll()">Save</button>
 </div>
 
 <div id="toast" role="status" aria-live="assertive">
   <span class="mark" id="toast-mark">✓</span>
   <span class="msg" id="toast-msg"></span>
   <button class="dismiss" id="toast-dismiss" onclick="hideToast()">OK</button>
+</div>
+
+<div id="ask" role="alertdialog" aria-modal="true" aria-labelledby="ask-title">
+  <div class="card">
+    <h3 id="ask-title"></h3>
+    <p id="ask-msg"></p>
+    <button class="yes" id="ask-yes"></button>
+    <button class="no" id="ask-no"></button>
+  </div>
 </div>
 
 <div id="scrim" onclick="closeSheet()"></div>
@@ -173,34 +219,45 @@
 
 <script>
 /* ------------------------------------------------------------- sections */
+// 'standing' is not part of a day: those notes show every day until Susan
+// removes them. 'notes' is now only for a note meant for one day.
 const SECTIONS = [
   {key:'breakfast', title:'Breakfast',        pool:'food',   verb:'food'},
   {key:'amSnack',   title:'Morning snack',    pool:'food',   verb:'food'},
   {key:'lunch',     title:'Lunch',            pool:'food',   verb:'food'},
   {key:'pmSnack',   title:'Afternoon snack',  pool:'food',   verb:'food'},
   {key:'dinner',    title:'Family dinner',    pool:'dinner', verb:'a dinner'},
-  {key:'notes',     title:'Notes for Melody', pool:'notes',  verb:'a note'},
+  {key:'standing',  title:'Notes for Melody', pool:'notes',  verb:'a note', accent:'notes',
+    every:() => 'Every day, until you remove them'},
+  {key:'notes',     title:'Note just for this day', pool:'notes', verb:'a note', accent:'notes',
+    every:() => `Only on ${weekday(date)}`},
   {key:'chores',    title:'If there is time', pool:'chores', verb:'a job'},
 ];
 const TZ = 'America/Edmonton';
 const PIN_KEY = 'liams-day-pin';
+const DAYS_AHEAD = 7;               // today + the next 7 days
+const AWAY_MS = 10 * 60 * 1000;     // back after 10 min → re-check the day
 
 let pin = '';
-let which = 'tomorrow';
-let date = null;
-let plan = null;
+let date = null;          // the day being planned, YYYY-MM-DD
+let plan = null;          // that day's lists (plan.notes = one-off notes only)
+let standing = [];        // notes shown every day
 let library = null;
 let contacts = [];
 let sheetKey = null;
 let dirty = false;
+let loadedOn = null;      // what "today" was when this day was loaded
+let hiddenAt = 0;
+let planned = {};         // date → number of items saved, for the dots
+const okayed = new Set(); // dates Susan already confirmed past the wrong-day check
 
 /* localStorage can throw outright in some browsers — guard every touch. */
 const remember=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 const recall=(k)=>{try{return localStorage.getItem(k)}catch(e){return null}};
-
 const esc = (s) => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt = (d,o)=>new Intl.DateTimeFormat('en-CA',o).format(d);
 
+/* ---------------------------------------------------------------- dates */
 function todayLocal(){
   return fmt(new Date(),{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
 }
@@ -212,10 +269,70 @@ function shift(iso,n){
   const t=new Date(Date.UTC(y,m-1,d,12)+n*86400000);
   return fmt(t,{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'});
 }
-function pretty(iso){
-  const [y,m,d]=iso.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-CA',{weekday:'long',month:'long',day:'numeric',timeZone:'UTC'})
-    .format(new Date(Date.UTC(y,m-1,d,12)));
+const asDate = (iso)=>{ const [y,m,d]=iso.split('-').map(Number); return new Date(Date.UTC(y,m-1,d,12)); };
+const pretty = (iso)=>new Intl.DateTimeFormat('en-CA',
+  {weekday:'long',month:'long',day:'numeric',timeZone:'UTC'}).format(asDate(iso));
+const weekday = (iso,len='long')=>new Intl.DateTimeFormat('en-CA',
+  {weekday:len,timeZone:'UTC'}).format(asDate(iso));
+const monthDay = (iso)=>new Intl.DateTimeFormat('en-CA',
+  {month:'short',day:'numeric',timeZone:'UTC'}).format(asDate(iso));
+const dayNum = (iso)=>Number(iso.slice(8));
+
+// She plans at night, so after 6pm the sensible starting day is tomorrow.
+// Between midnight and 6pm it's today — which is also right at 12:15am,
+// when "tomorrow" in her head is the day that has already started.
+function defaultDate(){
+  const t = todayLocal();
+  return localHour() >= 18 ? shift(t,1) : t;
+}
+
+/* Where the plan being edited sits relative to what Melody will see. */
+function relation(d){
+  const t = todayLocal();
+  if (d < t) return 'past';
+  if (d === t) return localHour() >= 18 ? 'today-evening' : 'today';
+  if (d === shift(t,1)) return localHour() < 5 ? 'after-midnight-tomorrow' : 'tomorrow';
+  return 'later';
+}
+
+/* The three ways v1 put a plan on the wrong day, found in the saved data:
+   an evening save landing on that same day (Sep 7, Nov 9), and a save just
+   after midnight landing two days ahead (Oct 26). Plus a page left open
+   overnight, still pointing at a day that has passed. */
+function wrongDayRisk(){
+  const t = todayLocal();
+  switch (relation(date)) {
+    case 'past': return {
+      title:`${weekday(date)} has already passed`,
+      msg:`This page has been open since ${weekday(date)}. Liam's tablet is showing ${weekday(t)} now.`,
+      alt:defaultDate()};
+    case 'today-evening': return {
+      title:`Save to today, ${weekday(date)}?`,
+      msg:`It's evening, so ${weekday(date)} is nearly over. If this plan is for tomorrow, save it to ${weekday(shift(t,1))}.`,
+      alt:shift(t,1)};
+    case 'after-midnight-tomorrow': return {
+      title:`Save to ${weekday(date)}?`,
+      msg:`It's after midnight, so today is already ${weekday(t)}. If this plan is for the morning, save it to ${weekday(t)}.`,
+      alt:t};
+    default: return null;
+  }
+}
+
+/* ------------------------------------------------- in-page confirm card */
+function ask({title,msg,yes,no}){
+  return new Promise((resolve)=>{
+    const el = document.getElementById('ask');
+    document.getElementById('ask-title').textContent = title;
+    document.getElementById('ask-msg').textContent = msg;
+    const y = document.getElementById('ask-yes'), n = document.getElementById('ask-no');
+    y.textContent = yes; n.textContent = no;
+    const done = (v)=>{ el.classList.remove('on'); y.onclick=n.onclick=el.onclick=null; resolve(v); };
+    y.onclick = ()=>done('yes');
+    n.onclick = ()=>done('no');
+    el.onclick = (e)=>{ if (e.target === el) done('cancel'); };
+    el.classList.add('on');
+    y.focus();
+  });
 }
 
 /* ----------------------------------------------------------- PIN gate */
@@ -241,45 +358,119 @@ window.unlock = unlock;
 document.getElementById('pin').addEventListener('keydown',e=>{ if(e.key==='Enter') unlock(); });
 
 /* -------------------------------------------------------------- load */
-async function load(){
-  date = which === 'today' ? todayLocal() : shift(todayLocal(),1);
-  const res = await fetch(`/api/day?date=${date}`,{cache:'no-store'});
+async function load(d){
+  const res = await fetch(`/api/day?date=${d}`,{cache:'no-store'});
   const body = await res.json();
+  date = d;
   plan = body.plan;
+  // The server combines standing + one-off notes for older clients; the
+  // planner edits them separately.
+  plan.notes = Array.isArray(body.dayNotes) ? [...body.dayNotes] : [...(plan.notes||[])];
+  standing = Array.isArray(body.standingNotes) ? [...body.standingNotes] : [];
   library = body.library;
   contacts = body.contacts || [];
   dirty = false;
+  loadedOn = todayLocal();
   render();
+  loadSummary();
 }
 
-function pickDay(w){
-  if (dirty && !confirm('You have unsaved changes. Switch day anyway?')) return;
-  which = w; load();
+async function loadSummary(){
+  try{
+    const body = await fetch(`/api/day?summary=1&from=${todayLocal()}&days=${DAYS_AHEAD+1}`,
+      {cache:'no-store'}).then(r=>r.json());
+    planned = {};
+    for (const d of body.days||[]) planned[d.date] = d.items;
+    renderDays();
+  }catch(e){ /* dots are a nicety; never block planning on them */ }
 }
-window.pickDay = pickDay;
 
-async function copyYesterday(){
-  const src = shift(date,-1);
-  const body = await fetch(`/api/day?date=${src}`,{cache:'no-store'}).then(r=>r.json());
-  const any = Object.values(body.plan).some(a=>Array.isArray(a)&&a.length);
-  if (!any){ status(`Nothing saved for ${pretty(src)}.`,'bad'); return; }
-  plan = body.plan; dirty = true; render();
-  status('Copied. Change what you need, then save.','good');
+async function pickDate(d){
+  if (d === date) return;
+  if (dirty){
+    const has = planned[d] > 0;
+    const choice = await ask({
+      title:`Your changes to ${weekday(date)} aren't saved`,
+      msg: has ? `${weekday(d)} already has a plan. Moving these changes there will replace it when you save.`
+               : `You can take what you've built over to ${weekday(d)}, or leave it and start ${weekday(d)} fresh.`,
+      yes:`Move these changes to ${weekday(d)}`,
+      no:`Discard them and open ${weekday(d)}`,
+    });
+    if (choice === 'cancel') return;
+    if (choice === 'yes'){ date = d; dirty = true; render(); return; }
+  }
+  load(d);
 }
-window.copyYesterday = copyYesterday;
+window.pickDate = pickDate;
+
+/* Copies the most recent day that actually has something saved. v1 copied
+   literally yesterday, which on a Monday is an empty Sunday. */
+async function copyLast(){
+  const body = await fetch(`/api/day?latestBefore=${date}`,{cache:'no-store'}).then(r=>r.json());
+  if (!body.date){ status('No saved plan in the last three weeks to copy.','bad'); return; }
+  const src = body.plan;
+  const next = {};
+  for (const s of SECTIONS) if (s.key !== 'standing') next[s.key] = [...(src[s.key]||[])];
+  // Standing notes are already on every day; don't copy them in twice.
+  next.notes = next.notes.filter(id=>!standing.includes(id));
+  plan = next; dirty = true; render();
+  status(`Copied ${weekday(body.date)}, ${monthDay(body.date)}. Change what you need, then save.`,'good');
+}
+window.copyLast = copyLast;
 
 /* ------------------------------------------------------------ render */
 function itemById(pool,id){ return (library?.[pool]||[]).find(i=>i.id===id); }
+const listOf = (key)=> key === 'standing' ? standing : (plan[key] ||= []);
+
+function renderDays(){
+  const t = todayLocal(); const h = localHour();
+  const chips = [];
+  for (let i=0;i<=DAYS_AHEAD;i+=1){
+    const d = shift(t,i);
+    // After midnight the word "Tomorrow" points at the day AFTER the one
+    // Susan means (Oct 26). Leave it off then; the weekday does the work.
+    const tag = i===0 ? 'Today' : (i===1 && h>=5 ? 'Tomorrow' : '');
+    chips.push(`<button data-date="${d}" aria-pressed="${d===date}" onclick="pickDate('${d}')"
+        aria-label="${esc(pretty(d))}${planned[d]>0?', has a plan':''}">
+      <span class="tag">${tag}</span>
+      <span class="wd">${weekday(d,'short')}</span>
+      <span class="dn">${dayNum(d)}</span>
+      <span class="dot${planned[d]>0?' on':''}"></span></button>`);
+  }
+  // A day left open overnight is no longer in the strip; show it anyway so
+  // the highlighted chip always matches the header.
+  if (date && date < t) chips.unshift(`<button data-date="${date}" aria-pressed="true">
+      <span class="tag">Passed</span><span class="wd">${weekday(date,'short')}</span>
+      <span class="dn">${dayNum(date)}</span><span class="dot"></span></button>`);
+  const el = document.getElementById('daypick');
+  el.innerHTML = chips.join('');
+  el.querySelector('[aria-pressed="true"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
+}
 
 function render(){
-  document.getElementById('head').textContent =
-    which==='today' ? "Today's plan" : "Tomorrow's plan";
-  document.getElementById('sub').textContent = pretty(date);
-  document.getElementById('d-today').setAttribute('aria-pressed', which==='today');
-  document.getElementById('d-tomorrow').setAttribute('aria-pressed', which==='tomorrow');
+  const wd = weekday(date);
+  const rel = relation(date);
+  document.getElementById('head').textContent = `${wd}'s plan`;
+  const where = {
+    'past':'This day has passed',
+    'today':"On Liam's tablet now",
+    'today-evening':"Today — on Liam's tablet now",
+    'tomorrow':"Liam's tablet shows this tomorrow morning",
+    'after-midnight-tomorrow':`Liam's tablet shows this on ${wd}`,
+    'later':`Liam's tablet shows this on ${wd}`,
+  }[rel];
+  document.getElementById('sub').textContent = `${pretty(date)} · ${where}`;
+  document.getElementById('savebtn').textContent = `Save ${wd}'s plan`;
+
+  const risk = wrongDayRisk();
+  const warn = document.getElementById('warnline');
+  warn.hidden = !risk;
+  if (risk) warn.textContent = `⚠ ${risk.msg}`;
+
+  renderDays();
 
   document.getElementById('app').innerHTML = SECTIONS.map(s=>{
-    const ids = plan[s.key]||[];
+    const ids = listOf(s.key);
     const rows = ids.map((id,i)=>{
       const it = itemById(s.pool,id);
       if (!it) return '';
@@ -292,8 +483,10 @@ function render(){
         <button class="rm" onclick="drop('${s.key}',${i})" aria-label="Remove">×</button>
       </li>`;
     }).join('');
-    return `<section style="--accent:var(--${s.key.toLowerCase()})">
+    const accent = (s.accent || s.key).toLowerCase();
+    return `<section data-key="${s.key}" style="--accent:var(--${accent})">
       <h2>${esc(s.title)}</h2>
+      ${s.every ? `<p class="every">${esc(s.every())}</p>` : ''}
       <ol>${rows}</ol>
       <button class="add" onclick="openSheet('${s.key}')">+ Add ${esc(s.verb)}</button>
     </section>`;
@@ -302,12 +495,12 @@ function render(){
 
 /* Reordering is a swap of two array positions. Nothing sorts, ever. */
 function move(key,i,dir){
-  const a = plan[key]; const j = i+dir;
+  const a = listOf(key); const j = i+dir;
   if (j<0 || j>=a.length) return;
   [a[i],a[j]] = [a[j],a[i]];
   dirty = true; render();
 }
-function drop(key,i){ plan[key].splice(i,1); dirty = true; render(); }
+function drop(key,i){ listOf(key).splice(i,1); dirty = true; render(); }
 window.move = move; window.drop = drop;
 
 /* ------------------------------------------------------------- sheet */
@@ -330,7 +523,7 @@ window.openSheet = openSheet; window.closeSheet = closeSheet;
 
 function renderPool(){
   const s = SECTIONS.find(x=>x.key===sheetKey);
-  const chosen = plan[sheetKey]||[];
+  const chosen = listOf(sheetKey);
   document.getElementById('pool').innerHTML = (library[s.pool]||[]).map(it=>{
     const at = chosen.indexOf(it.id);
     return `<button aria-pressed="${at>=0}" onclick="toggle('${it.id}')">
@@ -339,9 +532,8 @@ function renderPool(){
     </button>`;
   }).join('') || `<p style="color:var(--muted);margin:.5rem 0">Nothing saved here yet — type one above.</p>`;
 }
-
 function toggle(id){
-  const arr = plan[sheetKey];
+  const arr = listOf(sheetKey);
   const at = arr.indexOf(id);
   if (at>=0) arr.splice(at,1); else arr.push(id);   // push = appended in tap order
   dirty = true; renderPool(); render();
@@ -356,7 +548,7 @@ function addNew(){
   // New items join the permanent library, so it's type once, tap forever.
   const id = `${s.pool[0]}${Date.now().toString(36)}${Math.floor(Math.random()*999)}`;
   library[s.pool].push({id, en:text, zh:''});
-  plan[sheetKey].push(id);
+  listOf(sheetKey).push(id);
   input.value = '';
   dirty = true; renderPool(); render();
 }
@@ -366,7 +558,7 @@ window.addNew = addNew;
 function openContacts(){
   const current = contacts.map(c=>`${c.label} | ${c.phone}`).join('\n');
   const next = prompt(
-    'One per line:  Name | Number\n\nThese show on Melody\'s board.', current);
+    'One per line:  Name | Number\n\nThese show on Liam\'s tablet.', current);
   if (next === null) return;
   contacts = next.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{
     const [label,...rest] = l.split('|');
@@ -379,7 +571,6 @@ window.openContacts = openContacts;
 
 /* -------------------------------------------------------------- save */
 let toastTimer = null;
-
 function showToast(msg, ok = true, autoHide = true){
   const t = document.getElementById('toast');
   document.getElementById('toast-msg').textContent = msg;
@@ -389,26 +580,47 @@ function showToast(msg, ok = true, autoHide = true){
   t.classList.add('on');
   clearTimeout(toastTimer);
   // Success fades by itself; a failure stays until she acknowledges it.
-  if (autoHide) toastTimer = setTimeout(hideToast, 3200);
+  if (autoHide) toastTimer = setTimeout(hideToast, 4200);
 }
 function hideToast(){
   clearTimeout(toastTimer);
   document.getElementById('toast').classList.remove('on');
 }
 window.hideToast = hideToast;
-
-// Kept for the small in-page messages (copy-yesterday, contacts).
+// Kept for the small in-page messages (copy last plan, contacts).
 function status(msg, kind = ''){ showToast(msg, kind !== 'bad'); }
 
+function savedMessage(d){
+  const when = {
+    'today':"It's on Liam's tablet now.",
+    'today-evening':"It's on Liam's tablet now.",
+    'tomorrow':"Liam's tablet shows it tomorrow morning.",
+  }[relation(d)] || `Liam's tablet shows it on ${weekday(d)}.`;
+  return `Saved ${weekday(d)}, ${monthDay(d)}. ${when}`;
+}
+
 async function saveAll(){
+  const risk = wrongDayRisk();
+  if (risk && !okayed.has(date)){
+    const choice = await ask({
+      title: risk.title, msg: risk.msg,
+      yes: `Save to ${weekday(risk.alt)} instead`,
+      no: relation(date) === 'past' ? 'Cancel' : `No, save to ${weekday(date)}`,
+    });
+    if (choice === 'cancel') return;
+    if (choice === 'yes') date = risk.alt;
+    else if (relation(date) === 'past') return;
+    else okayed.add(date);
+  }
+
   const btn = document.getElementById('savebtn');
-  const label = 'Save & send to tablet';
+  const label = `Save ${weekday(date)}'s plan`;
   btn.disabled = true; btn.textContent = 'Saving…';
   try{
     const res = await fetch('/api/save',{
       method:'POST',
       headers:{'content-type':'application/json','x-pin':pin},
-      body:JSON.stringify({date, plan, library, contacts}),
+      body:JSON.stringify({date, plan, standingNotes: standing, library, contacts}),
     });
     if (res.status === 401){
       showToast('That PIN was rejected. Nothing was saved.', false, false);
@@ -416,11 +628,13 @@ async function saveAll(){
     }
     if (!res.ok) throw new Error(res.status);
     dirty = false;
+    render();                     // header and button follow a switched day
     // Three signals at once: the button changes, a banner covers it, and
     // screen readers are told. There is no way to miss this and wonder.
     btn.textContent = '✓ Saved'; btn.classList.add('done');
-    showToast("Saved — Melody's tablet will show this.", true);
-    setTimeout(()=>{ btn.textContent = label; btn.classList.remove('done'); }, 3200);
+    showToast(savedMessage(date), true);
+    setTimeout(()=>{ btn.textContent = `Save ${weekday(date)}'s plan`; btn.classList.remove('done'); }, 3200);
+    loadSummary();
   }catch(e){
     // Susan's input stays on screen. Never silently lose a plan.
     showToast('Could not save. Your plan is still here — try again.', false, false);
@@ -432,17 +646,34 @@ window.saveAll = saveAll;
 
 addEventListener('beforeunload', (e)=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
 
-/* -------------------------------------------------------------- boot */
-function boot(){
-  // She plans at night, so after 6pm the sensible default is tomorrow.
-  which = localHour() >= 18 ? 'tomorrow' : 'today';
-  load();
+/* ---------------------------------------------- coming back to the page */
+// iPhones keep a Safari page alive in the background for hours without
+// reloading it. A planner opened at lunch and picked up again at 10pm was
+// still sitting on lunchtime's day — the Nov 9 bug. When she comes back
+// after a while (or the date has rolled over), start from the right day.
+function onReturn(){
+  if (!pin || !date) return;
+  const rolled = todayLocal() !== loadedOn;
+  const away = hiddenAt && (Date.now() - hiddenAt > AWAY_MS);
+  hiddenAt = 0;
+  if (!rolled && !away) return;
+  if (!dirty) load(defaultDate());
+  else render();               // keep her work; the warning line explains the day
 }
+document.addEventListener('visibilitychange', ()=>{
+  if (document.hidden) hiddenAt = Date.now(); else onReturn();
+});
+addEventListener('pageshow', (e)=>{ if (e.persisted){ hiddenAt = hiddenAt || 1; onReturn(); } });
+// Crossing 6pm or midnight with the page open changes what's "right".
+setInterval(()=>{ if (date && !document.hidden) render(); }, 60000);
+
+/* -------------------------------------------------------------- boot */
+function boot(){ load(defaultDate()); }
+
 (function start(){
   const saved = recall(PIN_KEY);
   if (saved){ document.getElementById('pin').value = saved; unlock(); }
   else document.getElementById('pin').focus();
-
   // Same safety net as the board. Susan can't save without a connection
   // anyway, but the page opening beats an error screen.
   if ('serviceWorker' in navigator) {
@@ -451,6 +682,7 @@ function boot(){
     });
   }
 })();
+
 </script>
 </body>
 </html>
