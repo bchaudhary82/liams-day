@@ -14,6 +14,7 @@
     --bg:#fdf8f2; --card:#fff; --ink:#2f2a26; --muted:#7d736b; --line:#ece3d8;
     --breakfast:#f6c453; --amsnack:#8fc98f; --lunch:#7fb3d5; --pmsnack:#c9a0dc;
     --dinner:#eb9e6f; --notes:#a8a29b; --chores:#9bb0c4;
+    --liamdinner:#e58fa5; --naps:#8a9ad6; --go:#2f6f4e;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0}
@@ -42,7 +43,7 @@
     padding:.85rem 1rem;border-radius:14px;border:2px solid var(--line);
     background:var(--card);color:var(--muted);cursor:pointer;font-weight:600}
   .tabs button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
-  .tabs[hidden]{display:none}
+  .tabs[hidden],.tabs button[hidden]{display:none}
 
   main{padding:0 1.5rem;display:grid;gap:1rem}
   section{background:var(--card);border-radius:18px;padding:1.05rem 1.25rem 1.15rem;
@@ -67,6 +68,46 @@
 
   .empty{padding:3rem 1.5rem;text-align:center;color:var(--muted);font-size:1.2rem}
 
+  /* Naps: the times Susan typed for today. */
+  .naps li{font-variant-numeric:tabular-nums;font-weight:600}
+
+  /* v2b: household jobs are the one place Melody taps. A whole row is the
+     button, big enough to hit while holding a toddler. */
+  .hint{margin:-.3rem 0 .6rem;color:var(--muted);font-size:.95rem}
+  .jobs{gap:.45rem}
+  .jobs li{padding:0}
+  .jobs li::before{display:none}
+  .job{width:100%;display:flex;align-items:center;gap:.8rem;text-align:left;font:inherit;font-size:1.25rem;
+    color:var(--ink);background:#fbf7f1;border:2px solid var(--line);border-radius:14px;padding:.7rem .85rem;cursor:pointer}
+  .job .box{flex:none;width:1.9rem;height:1.9rem;border-radius:9px;border:3px solid var(--accent,var(--chores));
+    display:grid;place-items:center;font-size:1.2rem;font-weight:800;color:#fff;background:#fff}
+  .job .w{flex:1;min-width:0}
+  .job .en-sub{display:block;font-size:.95rem;color:var(--muted)}
+  .job .from{display:block;font-size:.85rem;color:var(--muted)}
+  .job[aria-pressed="true"]{background:#eef6f0;border-color:#cfe4d6}
+  .job[aria-pressed="true"] .box{background:var(--go);border-color:var(--go)}
+  .job[aria-pressed="true"] .w > span:first-child{text-decoration:line-through;color:var(--muted)}
+  .job[disabled]{opacity:.6}
+
+  /* Time off tab — read-only for Melody. */
+  .tally{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
+  .tcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem;border-top:8px solid var(--c)}
+  .tcard .k{color:var(--muted);font-size:1rem}
+  .tcard .big{font-size:2.1rem;font-weight:800;line-height:1.1}
+  .tcard .big small{font-size:1rem;color:var(--muted);font-weight:600}
+  .tcard .left{font-weight:700;margin-top:.15rem}
+  .tcard .over{color:#b3402c}
+  .bar{height:9px;border-radius:9px;background:#eee6dc;margin-top:.5rem;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--c)}
+  .tlog li{padding-left:0;display:flex;gap:.8rem;align-items:baseline;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:.45rem;font-size:1.1rem}
+  .tlog li::before{display:none}
+  .tlog .dot{width:.8rem;height:.8rem;border-radius:50%;background:var(--c);flex:none;align-self:center}
+  .tlog .what{flex:1;min-width:10rem}
+  .tlog .n{display:block;color:var(--muted);font-size:.95rem}
+  .tlog .d{font-weight:700;white-space:nowrap}
+  .wide{grid-column:1/-1}
+
   @media (min-width:820px){
     body{font-size:22px}
     main{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
@@ -90,6 +131,7 @@
 <nav class="tabs" id="tabs" hidden>
   <button id="tab-liam" aria-pressed="true" onclick="setTab('liam')"></button>
   <button id="tab-todo" aria-pressed="false" onclick="setTab('todo')"></button>
+  <button id="tab-off" aria-pressed="false" onclick="setTab('off')"></button>
 </nav>
 
 <main id="board"></main>
@@ -108,16 +150,43 @@ const T = {
   contacts: {en:'If you need us',   zh:'需要联系我们'},
   tabLiam:  {en:'Liam',             zh:'利亚姆'},
   tabTodo:  {en:'Also to do',       zh:'还要做'},
+  tabOff:   {en:'Time off',         zh:'休假'},
+  liamDinner:{en:"Liam's dinner",   zh:'利亚姆的晚饭'},
+  naps:     {en:'Naps',             zh:'午睡'},
+  tapDone:  {en:'Tap a job when it’s done.', zh:'做完了就点一下。'},
+  carry:    {en:'Not finished yet from before', zh:'之前还没做完的'},
+  from:     {en:'from',             zh:'来自'},
+  tickFail: {en:'Could not save that tick — check the wifi and try again.', zh:'没保存成功——请检查网络再试一次。'},
+  vacation: {en:'Vacation',         zh:'年假'},
+  sick:     {en:'Sick days',        zh:'病假'},
+  stat:     {en:'Stat holidays',    zh:'法定假日'},
+  unpaid:   {en:'Unpaid days off',  zh:'无薪假'},
+  other:    {en:'Other time off',   zh:'其他休假'},
+  one_vacation:{en:'Vacation',      zh:'年假'},
+  one_sick: {en:'Sick day',         zh:'病假'},
+  one_stat: {en:'Stat holiday',     zh:'法定假日'},
+  one_unpaid:{en:'Unpaid day off',  zh:'无薪假'},
+  one_other:{en:'Other',            zh:'其他'},
+  of:       {en:'of',               zh:'/'},
+  days:     {en:'days',             zh:'天'},
+  day:      {en:'day',              zh:'天'},
+  left:     {en:'left',             zh:'剩余'},
+  over:     {en:'over',             zh:'超出'},
+  thisYear: {en:'this year',        zh:'今年'},
+  logTitle: {en:'Time off so far',  zh:'已休记录'},
+  noTimeOff:{en:'No time off logged yet this year.', zh:'今年还没有休假记录。'},
   nothing:  {en:'Nothing planned yet for today.', zh:'今天还没有安排。'},
   updated:  {en:'Last updated',     zh:'最后更新'},
   offline:  {en:'Showing the last saved plan — no connection right now.',
              zh:'显示上次保存的安排——现在没有网络。'},
 };
 const ACCENT = {breakfast:'--breakfast',amSnack:'--amsnack',lunch:'--lunch',
-  pmSnack:'--pmsnack',dinner:'--dinner',notes:'--notes',chores:'--chores'};
+  pmSnack:'--pmsnack',liamDinner:'--liamdinner',naps:'--naps',dinner:'--dinner',
+  notes:'--notes',chores:'--chores',carry:'--chores'};
 
-const TAB1 = ['breakfast','amSnack','lunch','pmSnack','notes'];
-const TAB2 = ['dinner','chores'];
+const TAB1 = ['breakfast','amSnack','lunch','pmSnack','liamDinner','naps','notes'];
+const TAB2 = ['dinner'];              // household jobs are rendered separately
+const TCOLOR = {vacation:'#4f9f96', sick:'#df9b2e', stat:'#8a9ad6', unpaid:'#a99f95', other:'#c08fd6'};
 const TZ = 'America/Edmonton';
 const CACHE_KEY = 'liams-day-cache';
 
@@ -147,11 +216,146 @@ function itemHtml(item){
   return `<li>${esc(item.en)}</li>`;
 }
 
-function sectionHtml(key, items){
-  if (!items.length) return '';                 // empty sections hide themselves
-  const head = lang === 'zh'
+function headHtml(key){
+  return lang === 'zh'
     ? `${esc(T[key].zh)}<span class="en-sub">${esc(T[key].en)}</span>`
     : esc(T[key].en);
+}
+
+function clock(hhmm){
+  const [h,m] = hhmm.split(':').map(Number);
+  return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-CA',
+    {hour:'numeric', minute:'2-digit', timeZone:'UTC'}).format(new Date(Date.UTC(2000,0,1,h,m)));
+}
+function napsHtml(){
+  const naps = data?.plan?.naps || [];
+  if (!naps.length) return '';
+  const rows = naps.map(n => `<li>${esc(clock(n.start))}${n.end ? ` – ${esc(clock(n.end))}` : ''}</li>`).join('');
+  return `<section class="naps" style="--accent:var(--naps)"><h2>${headHtml('naps')}</h2><ul>${rows}</ul></section>`;
+}
+
+/* Household jobs: Melody taps one when it's done. Ticks don't clear in the
+   morning — anything unfinished carries over until she ticks it. */
+let pending = new Set();
+let tickChain = Promise.resolve();
+function jobButton(item, date, done, fromLabel){
+  const key = `${date}|${item.id}`;
+  const words = lang === 'zh' && item.zh
+    ? `<span>${esc(item.zh)}</span><span class="en-sub">${esc(item.en)}</span>`
+    : `<span>${esc(item.en)}</span>`;
+  return `<li><button class="job" aria-pressed="${done}" ${pending.has(key)?'disabled':''}
+      onclick="tickJob('${date}','${item.id}',${!done})">
+    <span class="box">${done ? '✓' : ''}</span>
+    <span class="w">${words}${fromLabel ? `<span class="from">${esc(fromLabel)}</span>` : ''}</span>
+  </button></li>`;
+}
+function jobsHtml(){
+  const pool = new Map((data?.library?.chores || []).map(i => [i.id, i]));
+  const done = data?.plan?.done || [];
+  const today = (data?.plan?.chores || []).map(id => pool.get(id)).filter(Boolean);
+  const carried = (data?.carryover || []).map(c => ({c, it: pool.get(c.id)})).filter(x => x.it);
+  let html = '';
+  if (today.length) html += `<section style="--accent:var(--chores)"><h2>${headHtml('chores')}</h2>
+    <p class="hint">${esc(T.tapDone[lang])}</p>
+    <ul class="jobs">${today.map(it => jobButton(it, data.date, done.includes(it.id))).join('')}</ul></section>`;
+  if (carried.length) html += `<section style="--accent:var(--chores)"><h2>${headHtml('carry')}</h2>
+    <ul class="jobs">${carried.map(({c,it}) => jobButton(it, c.date, false,
+      `${T.from[lang]} ${shortDay(c.date)}`)).join('')}</ul></section>`;
+  return html;
+}
+function openJobs(){
+  const done = data?.plan?.done || [];
+  return (data?.plan?.chores || []).filter(id => !done.includes(id)).length + (data?.carryover || []).length;
+}
+function shortDay(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-CA',
+    {weekday:'long', timeZone:'UTC'}).format(new Date(Date.UTC(y,m-1,d,12)));
+}
+
+async function tickJob(date, id, done){
+  const key = `${date}|${id}`;
+  if (pending.has(key)) return;
+  // Show the tick straight away; undo it if the save fails.
+  const before = JSON.stringify([data.plan.done, data.carryover]);
+  if (date === data.date){
+    const cur = data.plan.done || [];
+    data.plan.done = done ? [...cur, id] : cur.filter(x => x !== id);
+  } else if (done){
+    data.carryover = data.carryover.filter(c => !(c.id === id && c.date === date));
+  }
+  pending.add(key); render();
+  try {
+    // One tick at a time: two quick taps on different jobs must not race
+    // each other on the server and lose one.
+    const send = () => fetch('/api/tick', { method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({date, id, done}) }).then(r => { if (!r.ok) throw new Error(r.status); });
+    const p = tickChain.then(send, send);
+    tickChain = p.catch(() => {});
+    await p;
+    pending.delete(key);
+    remember(CACHE_KEY, JSON.stringify(data));
+    render();
+    refresh();
+  } catch (e) {
+    pending.delete(key);
+    [data.plan.done, data.carryover] = JSON.parse(before);
+    render();
+    alertLine(T.tickFail[lang]);
+  }
+}
+window.tickJob = tickJob;
+function alertLine(msg){
+  const foot = document.getElementById('footer');
+  foot.innerHTML = `<span class="stale">${esc(msg)}</span>`;
+}
+
+/* Time off: what Susan has logged, and what's left of the allowance. */
+const num = (n) => (Number.isInteger(n) ? String(n) : String(n));
+function daysWord(n){ return lang === 'zh' ? T.days.zh : (n === 1 ? T.day.en : T.days.en); }
+function timeOffHtml(){
+  const t = data?.timeOff || {allowances:{vacation:10, sick:5}, entries:[]};
+  const year = (data?.date || '').slice(0,4);
+  const entries = (t.entries || []).filter(e => e.start.slice(0,4) === year)
+    .sort((a,b) => b.start.localeCompare(a.start));
+  const used = (type) => entries.filter(e => e.type === type).reduce((n,e) => n + Number(e.days||0), 0);
+  const card = (type, allowance) => {
+    const u = used(type);
+    if (allowance == null) return `<div class="tcard" style="--c:${TCOLOR[type]}">
+      <div class="k">${esc(T[type][lang])}</div>
+      <div class="big">${num(u)} <small>${esc(daysWord(u))} ${esc(T.thisYear[lang])}</small></div></div>`;
+    const left = allowance - u;
+    const pct = allowance ? Math.min(100, Math.round(u/allowance*100)) : 100;
+    // English: "4 days left" / "5 days over". Chinese reads 剩余 4 天 / 超出 5 天.
+    const amt = (n, w) => lang === 'zh'
+      ? `${esc(T[w].zh)} ${num(n)} ${esc(T.days.zh)}`
+      : `${num(n)} ${esc(daysWord(n))} ${esc(T[w].en)}`;
+    const leftTxt = left < 0 ? amt(-left, 'over') : amt(left, 'left');
+    return `<div class="tcard" style="--c:${TCOLOR[type]}">
+      <div class="k">${esc(T[type][lang])}</div>
+      <div class="big">${num(u)} <small>${esc(T.of[lang])} ${num(allowance)} ${esc(daysWord(allowance))}</small></div>
+      <div class="left ${left<0?'over':''}">${leftTxt}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div></div>`;
+  };
+  const fmt = (iso) => { const [y,m,d] = iso.split('-').map(Number);
+    return new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-CA',
+      {month:'short', day:'numeric', timeZone:'UTC'}).format(new Date(Date.UTC(y,m-1,d,12))); };
+  const log = entries.map(e => `<li style="--c:${TCOLOR[e.type]||TCOLOR.other}">
+      <span class="dot"></span>
+      <span class="what">${esc(fmt(e.start))}${e.end && e.end !== e.start ? ` – ${esc(fmt(e.end))}` : ''} · ${esc((T['one_'+e.type]||T.one_other)[lang])}
+        ${e.note ? `<span class="n">${esc(e.note)}</span>` : ''}</span>
+      <span class="d">${num(e.days)} ${esc(daysWord(e.days))}</span></li>`).join('');
+  return `<div class="tally wide">
+      ${card('vacation', t.allowances.vacation)}${card('sick', t.allowances.sick)}
+      ${card('stat', null)}${used('unpaid') ? card('unpaid', null) : ''}
+    </div>
+    <section class="wide" style="--accent:var(--line)"><h2>${headHtml('logTitle')}</h2>
+      ${log ? `<ul class="tlog">${log}</ul>` : `<p class="hint">${esc(T.noTimeOff[lang])}</p>`}</section>`;
+}
+
+function sectionHtml(key, items){
+  if (!items.length) return '';                 // empty sections hide themselves
+  const head = headHtml(key);
   return `<section style="--accent:var(${ACCENT[key]})">
       <h2>${head}</h2>
       <ul>${items.map(itemHtml).join('')}</ul>
@@ -201,21 +405,29 @@ function render(){
   document.getElementById('btn-zh').setAttribute('aria-pressed', lang==='zh');
   document.getElementById('date').textContent = prettyDate(data?.date);
 
-  const todoCount = TAB2.reduce((n,k) => n + itemsFor(k).length, 0);
-  const tabs = document.getElementById('tabs');
-
   // The count sits in the tab label, so Melody knows something is waiting
-  // without tapping. No chores, no tab at all.
-  tabs.hidden = todoCount === 0;
-  if (todoCount === 0 && tab === 'todo') tab = 'liam';
+  // without tapping: family dinner plus household jobs not yet ticked.
+  const hasTodo = itemsFor('dinner').length + (data?.plan?.chores?.length || 0)
+    + (data?.carryover?.length || 0) > 0;
+  const todoCount = itemsFor('dinner').length + openJobs();
+  const tabTodo = document.getElementById('tab-todo');
+  document.getElementById('tabs').hidden = !data;
+  tabTodo.hidden = !hasTodo;
+  if (!hasTodo && tab === 'todo') tab = 'liam';
   document.getElementById('tab-liam').textContent = label('tabLiam');
-  document.getElementById('tab-todo').textContent = `${label('tabTodo')} (${todoCount})`;
-  document.getElementById('tab-liam').setAttribute('aria-pressed', tab==='liam');
-  document.getElementById('tab-todo').setAttribute('aria-pressed', tab==='todo');
+  tabTodo.textContent = `${label('tabTodo')} (${todoCount})`;
+  document.getElementById('tab-off').textContent = label('tabOff');
+  for (const [id, t] of [['tab-liam','liam'],['tab-todo','todo'],['tab-off','off']])
+    document.getElementById(id).setAttribute('aria-pressed', tab===t);
 
-  const keys = tab === 'liam' ? TAB1 : TAB2;
-  let html = keys.map(k => sectionHtml(k, itemsFor(k))).join('');
-  if (tab === 'liam') html += contactsHtml();
+  let html = '';
+  if (tab === 'liam'){
+    html = TAB1.map(k => k === 'naps' ? napsHtml() : sectionHtml(k, itemsFor(k))).join('') + contactsHtml();
+  } else if (tab === 'todo'){
+    html = sectionHtml('dinner', itemsFor('dinner')) + jobsHtml();
+  } else {
+    html = timeOffHtml();
+  }
   if (!html) html = `<p class="empty">${esc(T.nothing[lang])}</p>`;
   document.getElementById('board').innerHTML = html;
 

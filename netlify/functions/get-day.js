@@ -17,7 +17,7 @@
 // plan.notes is the two lists combined — exactly what v1 expects to see.
 
 import {
-  readKey, dayKey, KEY_LIBRARY, KEY_CONTACTS, KEY_STANDING_NOTES,
+  readKey, dayKey, KEY_LIBRARY, KEY_CONTACTS, KEY_STANDING_NOTES, KEY_TIME_OFF,
   emptyPlan, localDate, addDays, isValidDate, json, useContext, storeName, SLOTS,
 } from './_store.js';
 import { STARTER_LIBRARY } from './_starter.js';
@@ -25,7 +25,34 @@ import { STARTER_LIBRARY } from './_starter.js';
 const MIGRATION_LOOKBACK = 21;   // days
 const COPY_LOOKBACK = 21;        // days
 
-const itemCount = (plan) => SLOTS.reduce((n, k) => n + (plan?.[k]?.length || 0), 0);
+const CARRY_LOOKBACK = 7;        // days
+
+const itemCount = (plan) => SLOTS.reduce((n, k) => n + (plan?.[k]?.length || 0), 0)
+  + (plan?.naps?.length || 0);
+
+/**
+ * Household jobs not ticked off on earlier days, still waiting. Susan:
+ * ticks shouldn't clear each morning "in case she doesn't get everything
+ * done in one day". Newest day first; a job already on today's list, or
+ * seen on a more recent day (done or not), isn't repeated. Only days saved
+ * since ticking existed count — those carry a `done` list — so the weeks
+ * of v1 history, where nothing could ever be ticked, don't all reappear.
+ */
+async function readCarryover(date, todaysJobs) {
+  const seen = new Set(todaysJobs);
+  const out = [];
+  for (let i = 1; i <= CARRY_LOOKBACK; i += 1) {
+    const d = addDays(date, -i);
+    const plan = (await readKey(dayKey(d)))?.plan;
+    if (!plan || !Array.isArray(plan.done) || !Array.isArray(plan.chores)) continue;
+    for (const id of plan.chores) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (!plan.done.includes(id)) out.push({ id, date: d });
+    }
+  }
+  return out;
+}
 
 /**
  * The standing notes. Before Susan's first v2 save there is no stored list,
@@ -99,9 +126,11 @@ export default async (req, context) => {
   const since = url.searchParams.get('since');
   const date = isValidDate(requested) ? requested : localDate();
 
-  let day; let standing;
+  let day; let standing; let timeOff;
   try {
-    [day, standing] = await Promise.all([readKey(dayKey(date)), readStanding()]);
+    [day, standing, timeOff] = await Promise.all([
+      readKey(dayKey(date)), readStanding(), readKey(KEY_TIME_OFF),
+    ]);
   } catch (err) {
     return json({ error: 'storage_unavailable', detail: String(err) }, 503);
   }
@@ -109,7 +138,7 @@ export default async (req, context) => {
   // One stamp covering both the day and the standing notes, so a tablet
   // left open still notices when Susan edits a standing note.
   const dayUpdatedAt = day?.updatedAt || null;
-  const updatedAt = later(dayUpdatedAt, standing.updatedAt);
+  const updatedAt = later(later(dayUpdatedAt, standing.updatedAt), timeOff?.updatedAt || null);
 
   // Nothing has changed since the caller last looked.
   if (since && updatedAt && since === updatedAt) {
@@ -126,8 +155,10 @@ export default async (req, context) => {
   // no terminal. Her first save replaces this with her own library.
   const hasLibrary = library && Object.values(library).some((a) => a?.length);
 
-  const plan = day?.plan || emptyPlan();
+  const plan = { ...emptyPlan(), ...(day?.plan || {}) };
   const dayNotes = Array.isArray(plan.notes) ? plan.notes : [];
+  let carryover = [];
+  try { carryover = await readCarryover(date, plan.chores); } catch { /* optional */ }
 
   return json({
     date,
@@ -139,6 +170,10 @@ export default async (req, context) => {
     dayUpdatedAt,
     library: hasLibrary ? library : STARTER_LIBRARY,
     contacts: contacts || [],   // deliberately empty until Susan adds her own
+    carryover,
+    timeOff: timeOff
+      ? { allowances: timeOff.allowances, entries: timeOff.entries || [], updatedAt: timeOff.updatedAt }
+      : { allowances: { vacation: 10, sick: 5 }, entries: [], updatedAt: null },
     store: storeName(),
   });
 };

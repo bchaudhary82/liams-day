@@ -364,6 +364,114 @@ check('an unknown context falls back to the original store', storeName() === 'li
   await fs.rm(legacyFile, { force: true });
 }
 
+/* ------------------------------------------- 16. Liam's dinner + naps (v2b) */
+const post = (url, payload, pin) => fetch(`${BASE}${url}`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json', ...(pin ? { 'x-pin': pin } : {}) },
+  body: JSON.stringify(payload),
+}).then(async (r) => ({ status: r.status, body: await r.json() }));
+
+const ND = '2026-11-25';
+await save({
+  date: ND,
+  plan: { ...planA, liamDinner: ['f-peas', 'f-oat'],
+    naps: [{ start: '12:30', end: '14:15' }, { start: '16:00', end: '' }, { start: '9am', end: '' }] },
+  standingNotes: [], library,
+});
+const nd2 = await get(`?date=${ND}`);
+check("Liam's dinner is saved in the order tapped", eq(nd2.body.plan.liamDinner, ['f-peas', 'f-oat']));
+check('nap times are saved in order, a nap with no end time is allowed',
+  eq(nd2.body.plan.naps, [{ start: '12:30', end: '14:15' }, { start: '16:00', end: '' }]),
+  JSON.stringify(nd2.body.plan.naps));
+check('a badly typed nap time is dropped, not stored', nd2.body.plan.naps.length === 2);
+const blank = await get('?date=2026-12-30');
+check("an unplanned day has empty Liam's dinner and naps",
+  eq(blank.body.plan.liamDinner, []) && eq(blank.body.plan.naps, []));
+
+// An older planner copy that doesn't know these sections must not wipe them.
+const oldPlan = { ...planA }; delete oldPlan.liamDinner; delete oldPlan.naps;
+await save({ date: ND, plan: oldPlan, standingNotes: [], library });
+const nd3 = await get(`?date=${ND}`);
+check("a save from an older planner keeps Liam's dinner and naps",
+  eq(nd3.body.plan.liamDinner, ['f-peas', 'f-oat']) && nd3.body.plan.naps.length === 2);
+
+/* --------------------------------------------------- 17. ticking jobs (v2b) */
+const T0 = localDate();
+const T1 = addDays(T0, -1);
+const T2 = addDays(T0, -2);
+const jobs = (chores) => ({ ...planA, chores });
+await save({ date: T2, plan: jobs(['c-a', 'c-b']), standingNotes: [], library });
+await save({ date: T1, plan: jobs(['c-c', 'c-d']), standingNotes: [], library });
+await save({ date: T0, plan: jobs(['c-e', 'c-f']), standingNotes: [], library });
+
+const tk = await post('/api/tick', { date: T0, id: 'c-e', done: true });
+check('Melody can tick off a household job with no PIN', tk.status === 200);
+let t0 = await get(`?date=${T0}`);
+check('the tick is stored on that day', eq(t0.body.plan.done, ['c-e']));
+check('ticking moves the stamp so another screen notices', t0.body.updatedAt === tk.body.updatedAt);
+
+const notJob = await post('/api/tick', { date: T0, id: 'f-oat', done: true });
+check('a tick can only touch a job that is on that day', notJob.status === 404);
+const future = await post('/api/tick', { date: addDays(T0, 2), id: 'c-e', done: true });
+check('a tick cannot reach a future day', future.status === 400);
+
+await save({ date: T0, plan: jobs(['c-e', 'c-f', 'c-g']), standingNotes: [], library });
+t0 = await get(`?date=${T0}`);
+check("Susan saving the day keeps Melody's ticks", eq(t0.body.plan.done, ['c-e']));
+check('Susan saving keeps her job order exactly', eq(t0.body.plan.chores, ['c-e', 'c-f', 'c-g']));
+await save({ date: T0, plan: jobs(['c-f', 'c-g']), standingNotes: [], library });
+t0 = await get(`?date=${T0}`);
+check('removing a job also removes its tick', eq(t0.body.plan.done, []));
+await post('/api/tick', { date: T0, id: 'c-f', done: true });
+await post('/api/tick', { date: T0, id: 'c-f', done: false });
+t0 = await get(`?date=${T0}`);
+check('a tick can be undone', eq(t0.body.plan.done, []));
+
+/* ---------------------------------------------- 18. unfinished jobs (v2b) */
+await post('/api/tick', { date: T1, id: 'c-c', done: true });
+t0 = await get(`?date=${T0}`);
+const carried = t0.body.carryover;
+check("yesterday's unticked job carries forward to today",
+  carried.some((c) => c.id === 'c-d' && c.date === T1), JSON.stringify(carried));
+check("yesterday's ticked job does not carry forward", !carried.some((c) => c.id === 'c-c'));
+check('unfinished jobs from two days ago carry forward too',
+  carried.some((c) => c.id === 'c-a' && c.date === T2) && carried.some((c) => c.id === 'c-b'));
+check('newest unfinished day comes first', carried[0].date === T1);
+
+await save({ date: T0, plan: jobs(['c-f', 'c-d']), standingNotes: [], library });
+t0 = await get(`?date=${T0}`);
+check("a job already on today's list isn't shown twice", !t0.body.carryover.some((c) => c.id === 'c-d'));
+
+// Ticked on a later day = done, even if an older day still has it open.
+await save({ date: T1, plan: jobs(['c-c', 'c-d', 'c-a']), standingNotes: [], library });
+await post('/api/tick', { date: T1, id: 'c-a', done: true });
+t0 = await get(`?date=${T0}`);
+check('a job ticked on a more recent day stays done', !t0.body.carryover.some((c) => c.id === 'c-a'),
+  JSON.stringify(t0.body.carryover));
+await post('/api/tick', { date: T2, id: 'c-b', done: true });
+t0 = await get(`?date=${T0}`);
+check('ticking a carried-over job clears it', !t0.body.carryover.some((c) => c.id === 'c-b'));
+
+/* ----------------------------------------------------- 19. time off (v2b) */
+const toNoPin = await post('/api/time-off', { entries: [] });
+check('time off cannot be changed without the PIN', toNoPin.status === 401);
+const to = await post('/api/time-off', {
+  allowances: { vacation: 10, sick: 5 },
+  entries: [
+    { id: 't1', start: '2026-07-06', end: '2026-07-10', type: 'vacation', days: 5, note: 'Family trip' },
+    { id: 't2', start: '2026-09-14', type: 'sick', days: 0.5 },
+    { id: 't3', start: '2026-09-15', type: 'party', days: 1 },
+  ],
+}, PIN);
+check('Susan can save time off with the PIN', to.status === 200);
+const tr = await get(`?date=${T0}`);
+check('time off comes back with the day', tr.body.timeOff.entries.length === 2
+  && tr.body.timeOff.allowances.vacation === 10 && tr.body.timeOff.allowances.sick === 5);
+check('a half day is kept as a half day', tr.body.timeOff.entries.find((e) => e.id === 't2').days === 0.5);
+check('an entry with no end date ends the same day', tr.body.timeOff.entries.find((e) => e.id === 't2').end === '2026-09-14');
+check('an unknown type is rejected', !tr.body.timeOff.entries.some((e) => e.id === 't3'));
+check('a time-off change moves the stamp, so the tablet refreshes', tr.body.updatedAt === to.body.updatedAt);
+
 /* ------------------------------------------------------------- report */
 
 await cleanup();

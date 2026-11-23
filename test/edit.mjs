@@ -66,7 +66,7 @@ await bfast.locator('.add').click();
 for (const name of ['Pear', 'Milk', 'Avocado']) {
   await page.locator('#pool button').filter({ hasText: name }).first().click();
 }
-await page.click('.close');
+await page.click('#sheet .close');
 let rows = await namesIn(bfast);
 check('items appear in the order they were tapped, not sorted',
   rows.join('|') === 'Pear|Milk|Avocado', rows.join('|'));
@@ -87,7 +87,7 @@ check('the last item cannot be moved down',
 await bfast.locator('.add').click();
 await page.fill('#newitem', 'Kiwi, peeled and diced');
 await page.click('.newrow button');
-await page.click('.close');
+await page.click('#sheet .close');
 rows = await namesIn(bfast);
 check('a brand-new food can be typed and lands at the end',
   rows[3] === 'Kiwi, peeled and diced', rows.join('|'));
@@ -97,7 +97,7 @@ const am = sectionFor('Morning snack');
 const pmBefore = await sectionFor('Afternoon snack').locator('ol li').count();
 await am.locator('.add').click();
 await page.locator('#pool button').filter({ hasText: 'Strawberries' }).first().click();
-await page.click('.close');
+await page.click('#sheet .close');
 check('adding to the morning snack does not touch the afternoon snack',
   await sectionFor('Afternoon snack').locator('ol li').count() === pmBefore);
 

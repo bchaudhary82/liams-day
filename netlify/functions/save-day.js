@@ -7,23 +7,9 @@
 // browser holds is effectively published.
 
 import {
-  writeKey, dayKey, KEY_LIBRARY, KEY_CONTACTS, KEY_STANDING_NOTES,
-  sanitisePlan, isValidDate, json, useContext,
+  readKey, writeKey, dayKey, KEY_LIBRARY, KEY_CONTACTS, KEY_STANDING_NOTES,
+  sanitisePlan, isValidDate, json, useContext, pinOk,
 } from './_store.js';
-
-const PIN = process.env.EDIT_PIN || '';
-
-function pinOk(req) {
-  const supplied = req.headers.get('x-pin') || '';
-  if (!PIN) return false;            // no PIN configured = locked, not open
-  if (supplied.length !== PIN.length) return false;
-  // Constant-time-ish compare so the response time can't leak the PIN.
-  let diff = 0;
-  for (let i = 0; i < PIN.length; i += 1) {
-    diff |= supplied.charCodeAt(i) ^ PIN.charCodeAt(i);
-  }
-  return diff === 0;
-}
 
 function sanitiseLibrary(input) {
   const out = { food: [], dinner: [], notes: [], chores: [] };
@@ -39,6 +25,9 @@ function sanitiseLibrary(input) {
         id: it.id,
         en: it.en.trim().slice(0, 200),
         zh: typeof it.zh === 'string' ? it.zh.trim().slice(0, 200) : '',
+        // v2: a deleted item is hidden from Susan's pick lists but kept, so
+        // past days that used it still show it correctly.
+        ...(it.hidden === true ? { hidden: true } : {}),
       }));
   }
   return out;
@@ -108,6 +97,20 @@ export default async (req, context) => {
       plan.notes = [];
     }
     await writeKey(KEY_STANDING_NOTES, { ids: standing, updatedAt });
+
+    // Melody's ticks belong to Melody. Susan's copy of the day may be
+    // minutes old, so never take ticks from her save — keep what's stored,
+    // minus any job she has since removed from the list.
+    const existing = (await readKey(dayKey(date)))?.plan || {};
+    const sent = body.plan || {};
+    // An older planner copy (still open in a browser from before an update)
+    // doesn't know about newer sections. Keep what's stored for those.
+    if (!Array.isArray(sent.liamDinner) && Array.isArray(existing.liamDinner)) {
+      plan.liamDinner = existing.liamDinner;
+    }
+    if (!Array.isArray(sent.naps) && Array.isArray(existing.naps)) plan.naps = existing.naps;
+    plan.done = (Array.isArray(existing.done) ? existing.done : [])
+      .filter((id) => plan.chores.includes(id));
 
     await writeKey(dayKey(date), { plan, updatedAt });
   } catch (err) {
