@@ -13,6 +13,7 @@
     --bg:#fdf8f2; --card:#fff; --ink:#2f2a26; --muted:#7d736b; --line:#ece3d8;
     --breakfast:#f6c453; --amsnack:#8fc98f; --lunch:#7fb3d5; --pmsnack:#c9a0dc;
     --dinner:#eb9e6f; --notes:#a8a29b; --chores:#9bb0c4;
+    --liamdinner:#e58fa5; --naps:#8a9ad6;
     --go:#2f6f4e;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -124,6 +125,68 @@
     background:#fff;color:var(--ink);display:flex;align-items:center;gap:.6rem}
   .pool button[aria-pressed="true"]{border-color:var(--go);background:#f0f7f2}
   .tick{width:1.4rem;flex:none;color:var(--go);font-weight:700}
+  /* v2b: pick list rows carry an edit button; the list is A–Z and the
+     text box doubles as a search. */
+  .prow{display:flex;gap:.4rem;align-items:stretch}
+  .prow > button:first-child{flex:1;min-width:0}
+  .prow .ed{flex:none;width:2.6rem;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--muted)}
+  .pedit{display:grid;gap:.45rem;padding:.6rem;border-radius:12px;border:2px solid var(--go);background:#f6faf7}
+  .pedit input{padding:.6rem;border:2px solid var(--line);border-radius:10px;font-size:1rem;width:100%}
+  .pedit .row{display:flex;gap:.4rem}
+  .pedit .row button{flex:1;padding:.6rem;border-radius:10px;border:0;font-weight:700}
+  .pedit .sv{background:var(--go);color:#fff}
+  .pedit .dl{background:#fbe7e2;color:#9b3422}
+  .pedit .cx{background:#f1eae1;color:var(--ink)}
+  .pedit small{color:var(--muted)}
+  .pool .empty{color:var(--muted);margin:.5rem 0}
+
+  /* Naps: Susan types the times each morning. */
+  .nap{display:flex;align-items:center;gap:.45rem;background:#fbf7f1;border-radius:11px;padding:.45rem .5rem}
+  .nap input{font:inherit;padding:.4rem .35rem;border:1px solid var(--line);border-radius:9px;background:#fff;min-width:0;flex:1}
+  .nap .to{color:var(--muted);font-size:.9rem}
+
+  /* Melody's ticks, shown to Susan read-only. */
+  li.done .txt{color:var(--muted);text-decoration:line-through}
+  .donetag{font-size:.72rem;font-weight:700;color:var(--go);background:#e4f2e9;border-radius:8px;padding:.15rem .4rem;flex:none}
+  .carry{margin:.2rem 0 .6rem;padding:.55rem .7rem;border-radius:11px;background:#f4f1fb;font-size:.9rem}
+  .carry b{display:block;margin-bottom:.2rem}
+
+  /* ---------------------------------------------------------- time off */
+  .gears{display:flex;gap:.5rem;padding:0 1rem}
+  .gears .gear{flex:1}
+  #toff{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;display:none;
+    padding:1rem 1rem calc(2rem + env(safe-area-inset-bottom))}
+  #toff.on{display:block}
+  #toff .top{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+  #toff h2{margin:0;font-size:1.35rem}
+  .yr{display:flex;align-items:center;gap:.6rem;margin:.8rem 0;font-weight:700;font-size:1.1rem}
+  .yr button{width:2.4rem;height:2.4rem;border-radius:10px;border:1px solid var(--line);background:#fff}
+  .tally{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+  .tcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:.75rem .85rem;border-top:6px solid var(--c)}
+  .tcard .big{font-size:1.6rem;font-weight:800;line-height:1.1}
+  .tcard .of{color:var(--muted);font-size:.9rem}
+  .tcard .left{font-size:.85rem;font-weight:700;margin-top:.2rem}
+  .tcard .over{color:#b3402c}
+  .bar{height:7px;border-radius:7px;background:#eee6dc;margin-top:.45rem;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--c)}
+  .tform{margin-top:1rem;background:#fff;border:1px solid var(--line);border-radius:16px;padding:.9rem;display:grid;gap:.6rem}
+  .tform h3{margin:0;font-size:1.05rem}
+  .tform label{display:grid;gap:.25rem;font-size:.9rem;color:var(--muted);font-weight:600}
+  .tform input,.tform select{font:inherit;color:var(--ink);padding:.6rem;border:2px solid var(--line);border-radius:10px;background:#fff;width:100%}
+  .tform .two{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+  .tform .check{display:flex;align-items:center;gap:.5rem;color:var(--ink)}
+  .tform .check input{width:auto}
+  .tform .count{font-weight:700;color:var(--ink)}
+  .tform button.addt{background:var(--go);color:#fff;border:0;border-radius:12px;padding:.85rem;font-weight:700;font-size:1rem}
+  .tlist{margin-top:1rem;display:grid;gap:.45rem}
+  .tlist h3{margin:.2rem 0;font-size:1.05rem}
+  .titem{display:flex;align-items:center;gap:.6rem;background:#fff;border:1px solid var(--line);border-radius:12px;padding:.6rem .7rem;border-left:7px solid var(--c)}
+  .titem .w{flex:1;min-width:0}
+  .titem .d{font-weight:700}
+  .titem .n{color:var(--muted);font-size:.88rem}
+  .titem .k{font-weight:800;white-space:nowrap}
+  .allow{margin-top:1rem;color:var(--muted);font-size:.9rem}
+  .allow summary{cursor:pointer;font-weight:600}
 
   /* -------------------------------------------------------- save bar */
   .savebar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(253,248,242,.96);
@@ -138,7 +201,7 @@
      to know it worked without hunting for a small grey line. It covers the
      save button, so the acknowledgement lands where she is already looking. */
   #toast{position:fixed;left:.75rem;right:.75rem;
-    bottom:calc(.7rem + env(safe-area-inset-bottom));z-index:40;
+    bottom:calc(.7rem + env(safe-area-inset-bottom));z-index:55;
     background:var(--go);color:#fff;border-radius:16px;padding:1.05rem 1.1rem;
     font-size:1.05rem;font-weight:600;display:flex;align-items:center;gap:.7rem;
     box-shadow:0 10px 30px rgba(40,30,20,.28);
@@ -183,8 +246,15 @@
 
 <main id="app"></main>
 
-<div style="padding:0 1rem">
+<div class="gears">
+  <button class="gear" onclick="openTimeOff()">🗓 Melody's time off</button>
   <button class="gear" onclick="openContacts()">⚙ Emergency contacts</button>
+</div>
+
+<div id="toff" role="dialog" aria-modal="true" aria-labelledby="toff-title">
+  <div class="top"><h2 id="toff-title">Melody's time off</h2>
+    <button class="close" onclick="closeTimeOff()">Done</button></div>
+  <div id="toff-body"></div>
 </div>
 
 <div class="savebar">
@@ -211,7 +281,7 @@
   <div class="sheet-head"><h3 id="sheet-title"></h3>
     <button class="close" onclick="closeSheet()">Done</button></div>
   <div class="newrow">
-    <input id="newitem" placeholder="Type something new…" autocomplete="off">
+    <input id="newitem" placeholder="Find or type something new…" autocomplete="off" oninput="renderPool()">
     <button onclick="addNew()">Add</button>
   </div>
   <div class="pool" id="pool"></div>
@@ -226,13 +296,17 @@ const SECTIONS = [
   {key:'amSnack',   title:'Morning snack',    pool:'food',   verb:'food'},
   {key:'lunch',     title:'Lunch',            pool:'food',   verb:'food'},
   {key:'pmSnack',   title:'Afternoon snack',  pool:'food',   verb:'food'},
+  {key:'liamDinner',title:"Liam's dinner",    pool:'food',   verb:'food'},
+  {key:'naps',      title:'Naps',             kind:'naps'},
   {key:'dinner',    title:'Family dinner',    pool:'dinner', verb:'a dinner'},
   {key:'standing',  title:'Notes for Melody', pool:'notes',  verb:'a note', accent:'notes',
     every:() => 'Every day, until you remove them'},
   {key:'notes',     title:'Note just for this day', pool:'notes', verb:'a note', accent:'notes',
     every:() => `Only on ${weekday(date)}`},
-  {key:'chores',    title:'If there is time', pool:'chores', verb:'a job'},
+  {key:'chores',    title:'If there is time', pool:'chores', verb:'a job',
+    every:() => 'Melody can tick these off on the tablet'},
 ];
+const LIST_SECTIONS = SECTIONS.filter(s => s.kind !== 'naps');
 const TZ = 'America/Edmonton';
 const PIN_KEY = 'liams-day-pin';
 const DAYS_AHEAD = 7;               // today + the next 7 days
@@ -249,6 +323,9 @@ let dirty = false;
 let loadedOn = null;      // what "today" was when this day was loaded
 let hiddenAt = 0;
 let planned = {};         // date → number of items saved, for the dots
+let carryover = [];       // household jobs still open from earlier days
+let timeOff = null;       // {allowances, entries}
+let editingId = null;     // pick-list item being edited
 const okayed = new Set(); // dates Susan already confirmed past the wrong-day check
 
 /* localStorage can throw outright in some browsers — guard every touch. */
@@ -367,8 +444,12 @@ async function load(d){
   // planner edits them separately.
   plan.notes = Array.isArray(body.dayNotes) ? [...body.dayNotes] : [...(plan.notes||[])];
   standing = Array.isArray(body.standingNotes) ? [...body.standingNotes] : [];
+  plan.naps = Array.isArray(plan.naps) ? plan.naps.map(n=>({...n})) : [];
+  plan.liamDinner = Array.isArray(plan.liamDinner) ? plan.liamDinner : [];
   library = body.library;
   contacts = body.contacts || [];
+  carryover = body.carryover || [];
+  timeOff = body.timeOff || {allowances:{vacation:10,sick:5}, entries:[]};
   dirty = false;
   loadedOn = todayLocal();
   render();
@@ -410,7 +491,9 @@ async function copyLast(){
   if (!body.date){ status('No saved plan in the last three weeks to copy.','bad'); return; }
   const src = body.plan;
   const next = {};
-  for (const s of SECTIONS) if (s.key !== 'standing') next[s.key] = [...(src[s.key]||[])];
+  for (const s of LIST_SECTIONS) if (s.key !== 'standing') next[s.key] = [...(src[s.key]||[])];
+  // Nap times move every day with when Liam wakes up — never copy old ones.
+  next.naps = [];
   // Standing notes are already on every day; don't copy them in twice.
   next.notes = next.notes.filter(id=>!standing.includes(id));
   plan = next; dirty = true; render();
@@ -470,14 +553,18 @@ function render(){
   renderDays();
 
   document.getElementById('app').innerHTML = SECTIONS.map(s=>{
+    if (s.kind === 'naps') return renderNaps(s);
     const ids = listOf(s.key);
+    const done = s.key === 'chores' ? (plan.done || []) : [];
     const rows = ids.map((id,i)=>{
       const it = itemById(s.pool,id);
       if (!it) return '';
       // The number IS the position. Tap order becomes display order.
-      return `<li>
+      const isDone = done.includes(id);
+      return `<li class="${isDone?'done':''}">
         <span class="num">${i+1}</span>
         <span class="txt">${esc(it.en)}${it.zh?`<span class="zh">${esc(it.zh)}</span>`:''}</span>
+        ${isDone ? '<span class="donetag">✓ Done</span>' : ''}
         <button class="mv" ${i===0?'disabled':''} onclick="move('${s.key}',${i},-1)" aria-label="Move up">▲</button>
         <button class="mv" ${i===ids.length-1?'disabled':''} onclick="move('${s.key}',${i},1)" aria-label="Move down">▼</button>
         <button class="rm" onclick="drop('${s.key}',${i})" aria-label="Remove">×</button>
@@ -487,10 +574,43 @@ function render(){
     return `<section data-key="${s.key}" style="--accent:var(--${accent})">
       <h2>${esc(s.title)}</h2>
       ${s.every ? `<p class="every">${esc(s.every())}</p>` : ''}
+      ${s.key === 'chores' ? renderCarry() : ''}
       <ol>${rows}</ol>
       <button class="add" onclick="openSheet('${s.key}')">+ Add ${esc(s.verb)}</button>
     </section>`;
   }).join('');
+}
+
+function renderNaps(s){
+  const rows = plan.naps.map((n,i)=>`<div class="nap">
+      <span class="num">${i+1}</span>
+      <input type="time" value="${esc(n.start||'')}" aria-label="Nap ${i+1} starts" onchange="setNap(${i},'start',this.value)">
+      <span class="to">to</span>
+      <input type="time" value="${esc(n.end||'')}" aria-label="Nap ${i+1} ends" onchange="setNap(${i},'end',this.value)">
+      <button class="rm" onclick="dropNap(${i})" aria-label="Remove nap">×</button>
+    </div>`).join('');
+  return `<section data-key="naps" style="--accent:var(--naps)">
+    <h2>Naps</h2>
+    <p class="every">Times for ${esc(weekday(date))} — they don't copy over</p>
+    <div style="display:grid;gap:.4rem;margin-bottom:${plan.naps.length?'.6rem':'0'}">${rows}</div>
+    <button class="add" onclick="addNap()">+ Add a nap</button>
+  </section>`;
+}
+function addNap(){ plan.naps.push({start:'',end:''}); dirty = true; render();
+  const ins = document.querySelectorAll('section[data-key="naps"] input'); ins[ins.length-2]?.focus(); }
+function setNap(i,k,v){ plan.naps[i][k] = v; dirty = true; }
+function dropNap(i){ plan.naps.splice(i,1); dirty = true; render(); }
+window.addNap = addNap; window.setNap = setNap; window.dropNap = dropNap;
+
+/* Jobs Melody hasn't ticked off on earlier days. Read-only here: they show
+   on the tablet until she ticks them. */
+function renderCarry(){
+  if (!carryover.length) return '';
+  const rows = carryover.map(c=>{
+    const it = itemById('chores', c.id);
+    return it ? `<div>• ${esc(it.en)} <span style="color:var(--muted)">(${esc(weekday(c.date,'short'))})</span></div>` : '';
+  }).join('');
+  return `<div class="carry"><b>Still open from earlier — showing on the tablet</b>${rows}</div>`;
 }
 
 /* Reordering is a swap of two array positions. Nothing sorts, ever. */
@@ -509,42 +629,125 @@ function openSheet(key){
   const s = SECTIONS.find(x=>x.key===key);
   document.getElementById('sheet-title').textContent = `${s.title} — tap to add`;
   document.getElementById('newitem').value = '';
-  document.getElementById('newitem').placeholder = `Type ${s.verb} that isn't listed…`;
+  document.getElementById('newitem').placeholder = `Find or type ${s.verb}…`;
+  editingId = null;
   renderPool();
   document.getElementById('sheet').classList.add('on');
   document.getElementById('scrim').classList.add('on');
 }
 function closeSheet(){
-  sheetKey = null;
+  sheetKey = null; editingId = null;
   document.getElementById('sheet').classList.remove('on');
   document.getElementById('scrim').classList.remove('on');
 }
 window.openSheet = openSheet; window.closeSheet = closeSheet;
 
+/* The PICK LIST (not the plan) is sorted A–Z, with the text box doubling as
+   a search. Items with the same name are shown once: Susan's list has a few
+   accidental duplicates ("Cheerios" twice). A deleted item is hidden here but
+   kept, so a past day that used it still reads correctly. The PLAN itself
+   is never sorted — tap order stays display order. */
+const norm = (t)=>String(t).trim().toLowerCase().replace(/\s+/g,' ');
+function poolGroups(pool){
+  const groups = new Map();
+  for (const it of (library[pool]||[])){
+    if (it.hidden) continue;
+    const k = norm(it.en);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(it);
+  }
+  // Show the copy that has a Chinese translation; otherwise the newest.
+  return [...groups.values()].map(items=>({
+    items,
+    rep: items.find(i=>i.zh) || items[items.length-1],
+  })).sort((a,b)=>a.rep.en.localeCompare(b.rep.en, 'en', {sensitivity:'base'}));
+}
+
 function renderPool(){
   const s = SECTIONS.find(x=>x.key===sheetKey);
+  if (!s) return;
   const chosen = listOf(sheetKey);
-  document.getElementById('pool').innerHTML = (library[s.pool]||[]).map(it=>{
-    const at = chosen.indexOf(it.id);
-    return `<button aria-pressed="${at>=0}" onclick="toggle('${it.id}')">
-      <span class="tick">${at>=0?`#${at+1}`:''}</span>
-      <span class="txt">${esc(it.en)}${it.zh?`<span class="zh">${esc(it.zh)}</span>`:''}</span>
-    </button>`;
-  }).join('') || `<p style="color:var(--muted);margin:.5rem 0">Nothing saved here yet — type one above.</p>`;
+  const q = norm(document.getElementById('newitem').value || '');
+  const groups = poolGroups(s.pool).filter(g=>!q || norm(g.rep.en).includes(q));
+  const html = groups.map(g=>{
+    const id = g.rep.id;
+    if (editingId === id) return `<div class="pedit">
+        <input id="editbox" value="${esc(g.rep.en)}" aria-label="Edit item">
+        ${g.rep.zh ? '<small>Changing the words clears the Chinese for this item.</small>' : ''}
+        <div class="row">
+          <button class="sv" onclick="saveEdit('${id}')">Save</button>
+          <button class="dl" onclick="deleteItem('${id}')">Delete</button>
+          <button class="cx" onclick="editItem(null)">Cancel</button>
+        </div></div>`;
+    const at = g.items.map(i=>chosen.indexOf(i.id)).find(n=>n>=0);
+    const on = at !== undefined;
+    return `<div class="prow">
+      <button aria-pressed="${on}" onclick="toggle('${id}')">
+        <span class="tick">${on?`#${at+1}`:''}</span>
+        <span class="txt">${esc(g.rep.en)}${g.rep.zh?`<span class="zh">${esc(g.rep.zh)}</span>`:''}</span>
+      </button>
+      <button class="ed" onclick="editItem('${id}')" aria-label="Edit ${esc(g.rep.en)}">✎</button>
+    </div>`;
+  }).join('');
+  document.getElementById('pool').innerHTML = html
+    || (q ? `<p class="empty">Not in your list yet — tap Add to save it.</p>`
+          : `<p class="empty">Nothing saved here yet — type one above.</p>`);
+  if (editingId) document.getElementById('editbox')?.focus();
+}
+
+function groupOf(id){
+  const s = SECTIONS.find(x=>x.key===sheetKey);
+  return poolGroups(s.pool).find(g=>g.items.some(i=>i.id===id));
 }
 function toggle(id){
   const arr = listOf(sheetKey);
-  const at = arr.indexOf(id);
+  const g = groupOf(id);
+  const ids = g ? g.items.map(i=>i.id) : [id];
+  const at = arr.findIndex(x=>ids.includes(x));
   if (at>=0) arr.splice(at,1); else arr.push(id);   // push = appended in tap order
   dirty = true; renderPool(); render();
 }
 window.toggle = toggle;
+
+function editItem(id){ editingId = id; renderPool(); }
+function saveEdit(id){
+  const text = document.getElementById('editbox').value.trim();
+  if (!text) return;
+  const g = groupOf(id);
+  for (const it of (g ? g.items : [])){
+    if (it.en !== text){ it.en = text; it.zh = ''; }  // old Chinese no longer matches
+  }
+  editingId = null; dirty = true; renderPool(); render();
+  status('Changed — remember to save.','good');
+}
+async function deleteItem(id){
+  const g = groupOf(id); if (!g) return;
+  const choice = await ask({
+    title:`Remove "${g.rep.en}" from your list?`,
+    msg:'It won\'t show up to pick any more. Days that already have it stay as they are.',
+    yes:'Remove it', no:'Keep it'});
+  if (choice !== 'yes') return;
+  for (const it of g.items) it.hidden = true;
+  editingId = null; dirty = true; renderPool(); render();
+  status('Removed — remember to save.','good');
+}
+window.editItem = editItem; window.saveEdit = saveEdit; window.deleteItem = deleteItem;
 
 function addNew(){
   const input = document.getElementById('newitem');
   const text = input.value.trim();
   if (!text) return;
   const s = SECTIONS.find(x=>x.key===sheetKey);
+  // Already there? Use it instead of making a second copy.
+  const existing = poolGroups(s.pool).find(g=>norm(g.rep.en)===norm(text));
+  if (existing){
+    const arr = listOf(sheetKey);
+    if (!existing.items.some(i=>arr.includes(i.id))) arr.push(existing.rep.id);
+    input.value = '';
+    dirty = true; renderPool(); render();
+    status(`"${existing.rep.en}" was already in your list — added it.`,'good');
+    return;
+  }
   // New items join the permanent library, so it's type once, tap forever.
   const id = `${s.pool[0]}${Date.now().toString(36)}${Math.floor(Math.random()*999)}`;
   library[s.pool].push({id, en:text, zh:''});
@@ -553,6 +756,175 @@ function addNew(){
   dirty = true; renderPool(); render();
 }
 window.addNew = addNew;
+
+/* ---------------------------------------------------------- time off */
+// Melody's time off, kept by Susan and shown read-only on the tablet.
+// Allowances (from Susan, Nov 23): 2 weeks vacation, 5 paid sick days,
+// plus stat days. The count resets in January — each year shows only its
+// own entries. Every change saves straight away (with the PIN).
+const TTYPES = {
+  vacation:{label:'Vacation',     c:'#4f9f96'},
+  sick:    {label:'Sick day',     c:'#df9b2e'},
+  stat:    {label:'Stat holiday', c:'#8a9ad6'},
+  unpaid:  {label:'Unpaid day off', c:'#a99f95'},
+  other:   {label:'Other',        c:'#c08fd6'},
+};
+let toffYear = null;
+
+function weekdaysBetween(a, b){
+  let n = 0;
+  for (let d = a; d <= b; d = shift(d,1)){
+    const wd = asDate(d).getUTCDay();
+    if (wd !== 0 && wd !== 6) n += 1;
+  }
+  return n;
+}
+const dayWord = (n)=> n === 1 ? 'day' : 'days';
+const fmtDays = (n)=> (Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.0',''));
+
+function yearEntries(y){
+  return (timeOff?.entries||[]).filter(e=>Number(e.start.slice(0,4))===y)
+    .sort((a,b)=>b.start.localeCompare(a.start));
+}
+function used(y, type){ return yearEntries(y).filter(e=>e.type===type).reduce((n,e)=>n+Number(e.days||0),0); }
+
+function tcard(type, allowance){
+  const t = TTYPES[type]; const u = used(toffYear, type);
+  if (allowance == null) return `<div class="tcard" style="--c:${t.c}">
+      <div class="of">${t.label}s</div><div class="big">${fmtDays(u)}</div>
+      <div class="of">${dayWord(u)} this year</div></div>`;
+  const left = allowance - u;
+  const pct = allowance ? Math.min(100, Math.round(u/allowance*100)) : 100;
+  return `<div class="tcard" style="--c:${t.c}">
+      <div class="of">${t.label}${type==='sick'?'s':''}</div>
+      <div class="big">${fmtDays(u)} <span class="of">of ${fmtDays(allowance)}</span></div>
+      <div class="left ${left<0?'over':''}">${left<0 ? `${fmtDays(-left)} ${dayWord(-left)} over` : `${fmtDays(left)} ${dayWord(left)} left`}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div></div>`;
+}
+
+function renderTimeOff(){
+  const a = timeOff.allowances;
+  const list = yearEntries(toffYear).map(e=>{
+    const t = TTYPES[e.type] || TTYPES.other;
+    const when = e.end && e.end !== e.start
+      ? `${monthDay(e.start)} – ${monthDay(e.end)}` : `${weekday(e.start,'short')}, ${monthDay(e.start)}`;
+    return `<div class="titem" style="--c:${t.c}">
+      <div class="w"><div class="d">${esc(when)} · ${esc(t.label)}</div>${e.note?`<div class="n">${esc(e.note)}</div>`:''}</div>
+      <span class="k">${fmtDays(e.days)} ${dayWord(e.days)}</span>
+      <button class="rm" onclick="removeTimeOff('${e.id}')" aria-label="Remove">×</button></div>`;
+  }).join('') || `<p class="empty" style="color:var(--muted)">Nothing logged for ${toffYear} yet.</p>`;
+  const opts = Object.entries(TTYPES).map(([k,t])=>`<option value="${k}">${t.label}</option>`).join('');
+  const hasUnpaid = used(toffYear,'unpaid') > 0;
+  document.getElementById('toff-body').innerHTML = `
+    <div class="yr"><button onclick="toffYear-=1;renderTimeOff()" aria-label="Previous year">‹</button>
+      <span>${toffYear}</span>
+      <button onclick="toffYear+=1;renderTimeOff()" aria-label="Next year">›</button></div>
+    <div class="tally">
+      ${tcard('vacation', a.vacation)}${tcard('sick', a.sick)}
+      ${tcard('stat', null)}${hasUnpaid ? tcard('unpaid', null) : ''}
+    </div>
+    <div class="tform">
+      <h3>Add time off</h3>
+      <label>What kind<select id="t-type">${opts}</select></label>
+      <div class="two">
+        <label>From<input type="date" id="t-from" value="${todayLocal()}" oninput="tCount()"></label>
+        <label>To (optional)<input type="date" id="t-to" oninput="tCount()"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="t-half" onchange="tCount()"> Half day</label>
+      <label>Note (optional)<input id="t-note" maxlength="120" placeholder="e.g. Family trip"></label>
+      <div class="count" id="t-count"></div>
+      <button class="addt" onclick="addTimeOff()">Add time off</button>
+    </div>
+    <div class="tlist"><h3>${toffYear}</h3>${list}</div>
+    <details class="allow"><summary>Yearly allowance</summary>
+      <div class="tform" style="margin-top:.5rem">
+        <div class="two">
+          <label>Vacation days<input type="number" min="0" step="0.5" id="a-vac" value="${a.vacation}"></label>
+          <label>Paid sick days<input type="number" min="0" step="0.5" id="a-sick" value="${a.sick}"></label>
+        </div>
+        <button class="addt" onclick="saveAllowances()">Save allowance</button>
+      </div></details>`;
+  tCount();
+}
+
+function tDays(){
+  const from = document.getElementById('t-from').value;
+  let to = document.getElementById('t-to').value || from;
+  const half = document.getElementById('t-half').checked;
+  if (!from) return {days:0};
+  if (to < from) to = from;
+  if (half) return {from, to:from, days:0.5};
+  return {from, to, days: weekdaysBetween(from, to)};
+}
+function tCount(){
+  const el = document.getElementById('t-count'); if (!el) return;
+  const {days} = tDays();
+  el.textContent = days ? `Counts as ${fmtDays(days)} work${dayWord(days)==='day'?'day':'days'} (weekends not counted)`
+                        : 'That range has no weekdays in it.';
+}
+
+// Saves run one at a time, each built from the result of the one before.
+// Two quick taps on "Add" must never send two lists where the second has
+// not seen the first — that would silently drop an entry.
+let toffChain = Promise.resolve();
+function postTimeOff(change){
+  const run = async () => {
+    document.querySelectorAll('#toff .addt').forEach(b=>{ b.disabled = true; });
+    try{
+      const next = change(timeOff);
+      const res = await fetch('/api/time-off',{
+        method:'POST', headers:{'content-type':'application/json','x-pin':pin},
+        body: JSON.stringify(next)});
+      if (!res.ok) throw new Error(res.status);
+      timeOff = next;
+    } finally {
+      document.querySelectorAll('#toff .addt').forEach(b=>{ b.disabled = false; });
+    }
+  };
+  const p = toffChain.then(run, run);
+  toffChain = p.catch(()=>{});
+  return p;
+}
+async function addTimeOff(){
+  if (document.querySelector('#toff .addt')?.disabled) return;
+  const {from, to, days} = tDays();
+  if (!from || !days){ status('Pick a weekday to log.','bad'); return; }
+  const entry = { id:`t${Date.now().toString(36)}`, start:from, end:to,
+    type: document.getElementById('t-type').value, days,
+    note: document.getElementById('t-note').value.trim() };
+  try{
+    await postTimeOff(t => ({ ...t, entries:[...t.entries, entry] }));
+    toffYear = Number(from.slice(0,4));
+    renderTimeOff();
+    showToast(`Saved — ${fmtDays(days)} ${dayWord(days)} of ${TTYPES[entry.type].label.toLowerCase()}. It's on Liam's tablet.`, true);
+  }catch(e){ showToast('Could not save the time off. Try again.', false, false); }
+}
+async function removeTimeOff(id){
+  const e = timeOff.entries.find(x=>x.id===id); if (!e) return;
+  const choice = await ask({title:'Remove this from the record?',
+    msg:`${TTYPES[e.type].label}, ${monthDay(e.start)}${e.end!==e.start?` – ${monthDay(e.end)}`:''}.`,
+    yes:'Remove it', no:'Keep it'});
+  if (choice !== 'yes') return;
+  try{
+    await postTimeOff(t => ({ ...t, entries: t.entries.filter(x=>x.id!==id) }));
+    renderTimeOff(); showToast('Removed.', true);
+  }catch(err){ showToast('Could not save. Try again.', false, false); }
+}
+async function saveAllowances(){
+  const vac = Number(document.getElementById('a-vac').value);
+  const sick = Number(document.getElementById('a-sick').value);
+  try{
+    await postTimeOff(t => ({ ...t, allowances:{vacation:vac, sick} }));
+    renderTimeOff(); showToast('Allowance saved.', true);
+  }catch(err){ showToast('Could not save. Try again.', false, false); }
+}
+function openTimeOff(){
+  toffYear = Number(todayLocal().slice(0,4));
+  renderTimeOff();
+  document.getElementById('toff').classList.add('on');
+}
+function closeTimeOff(){ document.getElementById('toff').classList.remove('on'); }
+Object.assign(window,{openTimeOff,closeTimeOff,addTimeOff,removeTimeOff,saveAllowances,tCount,renderTimeOff,postTimeOff});
 
 /* ---------------------------------------------------------- contacts */
 function openContacts(){

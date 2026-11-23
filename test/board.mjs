@@ -37,8 +37,10 @@ const inputs = await page.$$eval('input,textarea,select,[contenteditable="true"]
   (els) => els.length);
 check('no data-entry controls anywhere on the board', inputs === 0, `${inputs} found`);
 const buttons = await page.$$eval('button', (els) => els.map((e) => e.id));
-check('the only buttons are the language toggle and the two tabs',
-  buttons.sort().join(',') === 'btn-en,btn-zh,tab-liam,tab-todo', buttons.join(','));
+// v2b: Susan asked for Melody to tick off household jobs and to see her
+// time off, so the Liam tab still has no buttons beyond navigation.
+check('on the Liam tab, the only buttons are the language toggle and the tabs',
+  buttons.sort().join(',') === 'btn-en,btn-zh,tab-liam,tab-off,tab-todo', buttons.join(','));
 
 /* ------------------------------------------------------- the todo tab */
 check('the second tab carries a count so nothing needs tapping to be noticed',
@@ -94,9 +96,9 @@ await page.waitForTimeout(600);
 const afterEdit = await page.textContent('section ul li');
 check('the board picks up a change made elsewhere, untouched',
   afterEdit.includes('梨') || afterEdit.includes('Pear'), afterEdit);
-const tabsHidden = await page.getAttribute('#tabs', 'hidden');
-check('with dinner and chores empty, the second tab disappears entirely',
-  tabsHidden !== null);
+const todoHidden = await page.getAttribute('#tab-todo', 'hidden');
+check('with dinner and chores empty, the "Also to do" tab disappears entirely',
+  todoHidden !== null);
 
 await browser.close();
 console.log('\n  Checkpoint 2 — Melody\'s board\n');

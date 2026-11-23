@@ -96,6 +96,9 @@ export const KEY_CONTACTS = 'contacts';
 // Standing notes: shown every day until Susan removes them. v1 stored notes
 // inside each day, so they vanished overnight and on every unplanned day.
 export const KEY_STANDING_NOTES = 'standing-notes';
+// Time off (v2): Melody's vacation / sick / stat days, with Susan's
+// allowances. One record; the yearly reset is done by filtering on the year.
+export const KEY_TIME_OFF = 'time-off';
 export const dayKey = (date) => `day:${date}`;
 
 /* ------------------------------------------------------------- timezone */
@@ -133,14 +136,30 @@ export function addDays(date, n) {
 // The four meal slots plus the three list sections. amSnack and pmSnack are
 // SEPARATE KEYS and no code path may ever combine them — merging the two
 // snacks is one of the two failures that killed the device this replaces.
+//
+// liamDinner (v2): Liam's own dinner — Susan had been squeezing it into the
+// family dinner list ("For PETER - Liam's Dinner"). Old days simply don't
+// have it, which reads as an empty slot.
 export const SLOTS = [
-  'breakfast', 'amSnack', 'lunch', 'pmSnack', 'dinner', 'notes', 'chores',
+  'breakfast', 'amSnack', 'lunch', 'pmSnack', 'liamDinner', 'dinner', 'notes', 'chores',
 ];
 
 export function emptyPlan() {
   const plan = {};
   for (const slot of SLOTS) plan[slot] = [];
+  plan.naps = [];
   return plan;
+}
+
+/* Naps (v2). Susan types the times each day — they move with when Liam
+   wakes up. Kept in the order she enters them. "end" may be blank. */
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+export function sanitiseNaps(input) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((n) => n && typeof n === 'object' && HHMM.test(n.start || ''))
+    .map((n) => ({ start: n.start, end: HHMM.test(n.end || '') ? n.end : '' }))
+    .slice(0, 4);
 }
 
 /**
@@ -160,7 +179,25 @@ export function sanitisePlan(input) {
     if (!Array.isArray(arr)) continue;
     plan[slot] = arr.filter((id) => typeof id === 'string' && id.length > 0);
   }
+  plan.naps = sanitiseNaps(input.naps);
   return plan;
+}
+
+/* ------------------------------------------------------------------ PIN */
+
+const PIN = () => process.env.EDIT_PIN || '';
+
+export function pinOk(req) {
+  const pin = PIN();
+  const supplied = req.headers.get('x-pin') || '';
+  if (!pin) return false;            // no PIN configured = locked, not open
+  if (supplied.length !== pin.length) return false;
+  // Constant-time-ish compare so the response time can't leak the PIN.
+  let diff = 0;
+  for (let i = 0; i < pin.length; i += 1) {
+    diff |= supplied.charCodeAt(i) ^ pin.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 export function isValidDate(date) {

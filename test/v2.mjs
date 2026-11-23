@@ -38,7 +38,7 @@ async function addFood(page, section, name) {
   await sec.locator('.add').click();
   await page.fill('#newitem', name);
   await page.click('.newrow button');
-  await page.click('.close');
+  await page.click('#sheet .close');
 }
 
 const foods = (body, key = 'breakfast') => body.plan[key]
@@ -179,11 +179,11 @@ const foods = (body, key = 'breakfast') => body.plan[key]
   await sec('Notes for Melody').locator('.add').click();
   await page.fill('#newitem', 'Sunscreen before the park');
   await page.click('.newrow button');
-  await page.click('.close');
+  await page.click('#sheet .close');
   await sec('Note just for this day').locator('.add').click();
   await page.fill('#newitem', 'Grandma visits at 3');
   await page.click('.newrow button');
-  await page.click('.close');
+  await page.click('#sheet .close');
   await page.click('#savebtn');
   await page.waitForSelector('#toast.on');
 

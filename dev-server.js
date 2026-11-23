@@ -9,6 +9,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import getDay from './netlify/functions/get-day.js';
 import saveDay from './netlify/functions/save-day.js';
+import tick from './netlify/functions/tick.js';
+import saveTimeOff from './netlify/functions/save-time-off.js';
 
 const PORT = Number(process.env.PORT || 8888);
 const PUBLIC = path.join(process.cwd(), 'public');
@@ -39,11 +41,12 @@ function toWebRequest(req, body) {
 const server = http.createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://localhost');
 
-  if (pathname === '/api/day' || pathname === '/api/save') {
+  const HANDLERS = { '/api/day': getDay, '/api/save': saveDay, '/api/tick': tick, '/api/time-off': saveTimeOff };
+  if (HANDLERS[pathname]) {
     const chunks = [];
     for await (const c of req) chunks.push(c);
     const body = Buffer.concat(chunks);
-    const handler = pathname === '/api/day' ? getDay : saveDay;
+    const handler = HANDLERS[pathname];
     try {
       await toNodeResponse(await handler(toWebRequest(req, body)), res);
     } catch (err) {
