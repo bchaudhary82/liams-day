@@ -7,7 +7,7 @@
 <title>Liam's Day</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍎</text></svg>">
 <style>
-  /* Melody's board. Read-only, glanceable, large type.
+  /* The nanny's board. Read-only, glanceable, large type.
      Light only and explicitly painted — this is a kiosk on a Fire tablet,
      not a page that should follow a system theme it can't control. */
   :root{
@@ -71,7 +71,7 @@
   /* Naps: the times Susan typed for today. */
   .naps li{font-variant-numeric:tabular-nums;font-weight:600}
 
-  /* v2b: household jobs are the one place Melody taps. A whole row is the
+  /* v2b: household jobs are the one place the nanny taps. A whole row is the
      button, big enough to hit while holding a toddler. */
   .hint{margin:-.3rem 0 .6rem;color:var(--muted);font-size:.95rem}
   .jobs{gap:.45rem}
@@ -89,7 +89,7 @@
   .job[aria-pressed="true"] .w > span:first-child{text-decoration:line-through;color:var(--muted)}
   .job[disabled]{opacity:.6}
 
-  /* Time off tab — read-only for Melody. */
+  /* Time off tab — read-only for the nanny. */
   .tally{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
   .tcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem;border-top:8px solid var(--c)}
   .tcard .k{color:var(--muted);font-size:1rem}
@@ -207,7 +207,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, c => (
 function label(key){ return T[key][lang] || T[key].en; }
 
 /* In Chinese mode each line shows the Chinese with the English underneath,
-   so Melody is never cut off from the words Susan actually typed. An item
+   so the nanny is never cut off from the words Susan actually typed. An item
    with no Chinese simply shows English — never a blank line. */
 function itemHtml(item){
   if (lang === 'zh' && item.zh) {
@@ -234,7 +234,7 @@ function napsHtml(){
   return `<section class="naps" style="--accent:var(--naps)"><h2>${headHtml('naps')}</h2><ul>${rows}</ul></section>`;
 }
 
-/* Household jobs: Melody taps one when it's done. Ticks don't clear in the
+/* Household jobs: the nanny taps one when it's done. Ticks don't clear in the
    morning — anything unfinished carries over until she ticks it. */
 let pending = new Set();
 let tickChain = Promise.resolve();
@@ -405,7 +405,7 @@ function render(){
   document.getElementById('btn-zh').setAttribute('aria-pressed', lang==='zh');
   document.getElementById('date').textContent = prettyDate(data?.date);
 
-  // The count sits in the tab label, so Melody knows something is waiting
+  // The count sits in the tab label, so the nanny knows something is waiting
   // without tapping: family dinner plus household jobs not yet ticked.
   const hasTodo = itemsFor('dinner').length + (data?.plan?.chores?.length || 0)
     + (data?.carryover?.length || 0) > 0;

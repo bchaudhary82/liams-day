@@ -199,7 +199,7 @@ await board.waitForTimeout(500);
 check('a tick can be undone', (await board.locator('.jobs .job').first().getAttribute('aria-pressed')) === 'false');
 
 /* ================================================================ TIME OFF */
-await page.click('text=Melody\'s time off');
+await page.click('text=Nanny\'s time off');
 await page.waitForSelector('#toff.on');
 check('Susan has a time off screen', await page.isVisible('#t-type'));
 const yr = TODAY.slice(0, 4);
