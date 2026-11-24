@@ -172,11 +172,11 @@ const foods = (body, key = 'breakfast') => body.plan[key]
   const { ctx, page } = await plannerAt('2026-11-20T18:00:00Z');   // Fri 11am
   const sec = (t) => page.locator('#app section').filter({ has: page.locator('h2', { hasText: t }) }).first();
   check('standing notes are labelled as every day',
-    (await sec('Notes for Melody').locator('.every').textContent()).includes('Every day'));
+    (await sec('Notes for the nanny').locator('.every').textContent()).includes('Every day'));
   check('one-off notes are labelled with their day',
     (await sec('Note just for this day').locator('.every').textContent()).includes('Friday'));
 
-  await sec('Notes for Melody').locator('.add').click();
+  await sec('Notes for the nanny').locator('.add').click();
   await page.fill('#newitem', 'Sunscreen before the park');
   await page.click('.newrow button');
   await page.click('#sheet .close');

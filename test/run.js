@@ -405,7 +405,7 @@ await save({ date: T1, plan: jobs(['c-c', 'c-d']), standingNotes: [], library })
 await save({ date: T0, plan: jobs(['c-e', 'c-f']), standingNotes: [], library });
 
 const tk = await post('/api/tick', { date: T0, id: 'c-e', done: true });
-check('Melody can tick off a household job with no PIN', tk.status === 200);
+check('The nanny can tick off a household job with no PIN', tk.status === 200);
 let t0 = await get(`?date=${T0}`);
 check('the tick is stored on that day', eq(t0.body.plan.done, ['c-e']));
 check('ticking moves the stamp so another screen notices', t0.body.updatedAt === tk.body.updatedAt);

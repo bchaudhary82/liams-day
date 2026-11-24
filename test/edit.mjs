@@ -46,7 +46,7 @@ check('entering the PIN does not write anything to the day',
 const titles = await page.$$eval('#app h2', (e) => e.map((x) => x.textContent.trim()));
 check('every section Susan asked for is editable',
   ['Breakfast', 'Morning snack', 'Lunch', 'Afternoon snack',
-    'Family dinner', 'Notes for Melody', 'Note just for this day', 'If there is time']
+    'Family dinner', 'Notes for the nanny', 'Note just for this day', 'If there is time']
     .every((t) => titles.includes(t)), titles.join(','));
 
 /* --------------------------------------------- tap order = display order */

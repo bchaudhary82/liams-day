@@ -2,7 +2,7 @@
 //
 // The problem it solves: the page itself has to come down from the internet
 // before any of the app's code runs. So with no connection, a reload gave
-// the browser's "no connection" error page — Melody taps the icon in the
+// the browser's "no connection" error page — the nanny taps the icon in the
 // morning, the wifi is still waking up, and she gets a dinosaur instead of
 // Liam's breakfast. Paper doesn't do that, and paper is the bar.
 //
@@ -13,7 +13,7 @@
 // online. The cache is a safety net, never the source of truth — the classic
 // service-worker failure is pinning people to a stale version forever.
 
-const VERSION = 'liams-day-v3';
+const VERSION = 'liams-day-v4';
 const SHELL = ['/', '/index.html', '/edit.html'];
 
 self.addEventListener('install', (event) => {
@@ -46,7 +46,7 @@ self.addEventListener('fetch', (event) => {
 
   // The API is never cached. Today's plan must always be the real one, and
   // the page already handles a failed call by showing its stored copy with
-  // a "last updated" line. A cached API response could quietly show Melody
+  // a "last updated" line. A cached API response could quietly show the nanny
   // yesterday's meals as though they were today's — worse than an honest
   // "no connection right now".
   if (url.pathname.startsWith('/api/')) return;
